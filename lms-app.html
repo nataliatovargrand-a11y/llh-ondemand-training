@@ -634,7 +634,7 @@ function showModal(html){ document.getElementById('modalRoot').innerHTML=
 function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
 
 /* =================== TEAM (manager/admin) =================== */
-function myTeam(){ return ME.role==='admin'?DB.users.filter(u=>u.role!=='admin'):DB.users.filter(u=>u.managerId===ME.id&&u.uid!==ME.uid); }
+function myTeam(){ return ME.role==='admin'?DB.users:DB.users.filter(u=>u.managerId===ME.id&&u.uid!==ME.uid); }
 function renderTeam(m){
   const team=myTeam(), mand=mandatoryCourses();
   const accCount=team.filter(u=>isAccredited(u.uid)).length;
