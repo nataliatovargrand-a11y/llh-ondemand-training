@@ -250,8 +250,8 @@ async function loadData(){
   DB.users=(emps.data||[]).map(e=>({uid:e.user_id,id:e.emp_id,name:e.name,email:e.email,role:e.role,team:e.team,managerId:e.manager_emp_id}));
   DB.courses=(courses.data||[]).map(c=>({
     id:c.id,title:c.title,cat:c.category,mandatory:c.mandatory,passMark:c.pass_mark,status:c.status,version:c.version,
-    modules:(mods.data||[]).filter(m=>m.course_id===c.id).map(m=>({id:m.id,type:m.type,title:m.title,dur:m.duration_min,src:m.media_path,scenario:m.scenario})),
-    quiz:{questions:(qs.data||[]).filter(q=>q.course_id===c.id).map(q=>({id:q.id,q:q.q,opts:q.options,a:q.correct}))}
+    modules:(mods.data||[]).filter(m=>m.course_id===c.id).map(m=>({id:m.id,type:m.type,title:m.title,dur:m.duration_min,src:m.media_path,scenario:m.scenario,content:m.content})),
+    quiz:{questions:(qs.data||[]).filter(q=>q.course_id===c.id).map(q=>({id:q.id,q:q.q,opts:q.options,a:q.correct,stem:q.stem,fb:q.fb}))}
   }));
   const pmap={};
   const key=(u,c)=>u+'|'+c;
