@@ -225,8 +225,8 @@ const SB_URL='https://gpaegnvcpygrfeillahn.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwYWVnbnZjcHlncmZlaWxsYWhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTA1MzAsImV4cCI6MjEwMDEyNjUzMH0.DN94N5_OxOpGCmIWlPPBq5VadhIjmJAZcC9id2-JZlA';
 const sb=window.supabase.createClient(SB_URL,SB_KEY);
 
-let DB={users:[],courses:[],progress:[],feedback:[]};
-let ME=null, VIEW='home', PLAY=null, RT=null, _rtT=null;
+let DB={users:[],courses:[],progress:[],feedback:[],certs:[]};
+let ME=null, VIEW='home', PLAY=null, RT=null, _rtT=null, SEL_UID=null;
 
 function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
 function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -263,6 +263,8 @@ async function loadData(){
     pmap[k].attempts.push({date:a.created_at,score:a.score,passed:a.passed}); });
   DB.progress=Object.values(pmap);
   DB.feedback=(fb.data||[]).map(f=>({id:f.id,uid:f.user_id,cid:f.course_id,rating:f.rating,comment:f.comment,date:f.created_at,status:f.status,adminNote:f.admin_note}));
+  try{ const certs=await sb.from('completions').select('*').order('created_at',{ascending:false});
+    DB.certs=certs.error?[]:(certs.data||[]); }catch(e){ DB.certs=[]; }
 }
 
 /* =================== QUARTERS / ACCREDITATION =================== */
@@ -378,12 +380,15 @@ function renderShell(){
   document.getElementById('meBox').innerHTML=`<b>${esc(ME.name)}</b>${esc(ME.id)} · ${esc(ME.role)}<br>${esc(ME.team)}<br><span class="pwlink" onclick="openPw()">Change password</span>`;
   render();
 }
-function go(v){ VIEW=v; PLAY=null; renderShell(); window.scrollTo(0,0); }
+function go(v){ VIEW=v; PLAY=null; SEL_UID=null; renderShell(); window.scrollTo(0,0); }
 function render(){
   const m=document.getElementById('mainArea');
   if(PLAY) return renderPlayer(m);
+  if(SEL_UID) return renderStaffFolder(m);
   ({home:renderHome,team:renderTeam,courses:renderCourses,feedback:renderFeedback,reports:renderReports,users:renderUsers}[VIEW]||renderHome)(m);
 }
+function openStaff(uid){ SEL_UID=uid; render(); window.scrollTo(0,0); }
+function closeStaff(){ SEL_UID=null; render(); }
 async function refreshData(){ try{ await loadData(); render(); toast('Refreshed ✓'); }catch(e){ toast('Refresh failed'); } }
 function openPw(){
   showModal(`<h3>Change password</h3>
@@ -648,12 +653,13 @@ function renderTeam(m){
     <div class="card stat"><div class="n">${Math.ceil((quarterEnd()-new Date())/86400000)}</div><div class="l">Days left in quarter</div></div>
   </div>
   <div class="card tblwrap"><table>
-    <tr><th>Employee</th>${mand.map(c=>`<th>${esc(c.title.split(' ').slice(0,2).join(' '))}</th>`).join('')}<th>Accreditation</th></tr>
+    <tr><th>Employee</th>${mand.map(c=>`<th>${esc(c.title.split(' ').slice(0,2).join(' '))}</th>`).join('')}<th>Accreditation</th><th></th></tr>
     ${team.map(u=>`<tr>
-      <td><b>${esc(u.name)}</b><br><span style="color:var(--ink-soft);font-size:.78rem">${esc(u.id)} · ${esc(u.team)}</span></td>
+      <td><a href="#" onclick="openStaff('${u.uid}');return false" style="color:inherit;text-decoration:none"><b>${esc(u.name)}</b></a><br><span style="color:var(--ink-soft);font-size:.78rem">${esc(u.id)} · ${esc(u.team)}</span></td>
       ${mand.map(c=>{const ps=passedThisQuarter(u.uid,c),pc=coursePct(u.uid,c),sc=bestScore(u.uid,c);
         return `<td>${ps?`<span class="chip chip-ok">✓ ${sc}%</span>`:(pc>0?`<span class="chip chip-warn">${pc}%</span>`:'<span class="chip chip-bad">Not started</span>')}</td>`;}).join('')}
       <td>${isAccredited(u.uid)?'<span class="chip chip-ok">🏅 Accredited</span>':`<span class="chip chip-warn">${accreditationPct(u.uid)}%</span>`}</td>
+      <td><button class="btn btn-soft btn-sm" onclick="openStaff('${u.uid}')">📁 Folder</button></td>
     </tr>`).join('')||'<tr><td colspan="99" style="color:var(--ink-soft)">No team members yet — add them in Users.</td></tr>'}
   </table></div>`;
 }
@@ -908,6 +914,82 @@ function exportAttemptsCSV(){
   DB.progress.forEach(p=>{const u=DB.users.find(x=>x.uid===p.uid),c=DB.courses.find(x=>x.id===p.cid);
     p.attempts.forEach(a=>rows.push([new Date(a.date).toLocaleString('en-IE'),u?u.id:'',u?u.name:'',c?c.title:'',a.score,a.passed?'YES':'NO',quarterOf(a.date)]));});
   downloadCSV(rows,'LLH_test_attempts.csv');
+}
+
+/* =================== STAFF FOLDER =================== */
+function staffCerts(u){
+  // Certificates from LMS test passes (one per course per quarter, best score)
+  const lms={};
+  DB.progress.filter(p=>p.uid===u.uid).forEach(p=>{
+    const c=DB.courses.find(x=>x.id===p.cid); if(!c)return;
+    p.attempts.filter(a=>a.passed).forEach(a=>{
+      const k=c.id+'|'+quarterOf(a.date);
+      if(!lms[k]||a.score>lms[k].score) lms[k]={title:c.title,score:a.score,date:a.date,quarter:quarterOf(a.date),src:'LMS knowledge test'};
+    });
+  });
+  // Certificates from standalone training modules (matched by email)
+  const legacy=(DB.certs||[]).filter(r=>r.email&&r.email.toLowerCase()===u.email.toLowerCase()&&r.passed)
+    .map(r=>({title:r.module_title,score:r.score,date:r.created_at,quarter:quarterOf(r.created_at),src:'Training module'+(r.cert_sent_at?' · certificate emailed':''),certSent:r.cert_sent_at}));
+  return [...Object.values(lms),...legacy].sort((a,b)=>new Date(b.date)-new Date(a.date));
+}
+function renderStaffFolder(m){
+  const u=DB.users.find(x=>x.uid===SEL_UID);
+  if(!u){ SEL_UID=null; return render(); }
+  const mand=mandatoryCourses();
+  const certs=staffCerts(u);
+  const attempts=DB.progress.filter(p=>p.uid===u.uid).flatMap(p=>{
+    const c=DB.courses.find(x=>x.id===p.cid);
+    return p.attempts.map(a=>({course:c?c.title:'—',date:a.date,score:a.score,passed:a.passed}));
+  }).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const qAtt=attempts.filter(a=>quarterOf(a.date)===currentQuarter());
+  const avg=qAtt.length?Math.round(qAtt.reduce((s,a)=>s+a.score,0)/qAtt.length):null;
+  m.innerHTML=`
+  <button class="btn btn-ghost btn-sm" onclick="closeStaff()">← Back to ${ME.role==='admin'?'All Staff':'My Team'}</button>
+  <div class="pagehead" style="margin-top:1rem"><div>
+    <h2>📁 ${esc(u.name)}</h2>
+    <div class="sub">${esc(u.id)} · ${esc(u.team||'—')} · ${esc(u.role)} · ${esc(u.email)}</div></div>
+    <button class="btn btn-ghost btn-sm" onclick="exportStaffCSV('${u.uid}')">⬇ Export staff record</button></div>
+  <div class="grid cols4" style="margin-bottom:1.4rem">
+    <div class="card stat"><div class="n">${isAccredited(u.uid)?'🏅':accreditationPct(u.uid)+'%'}</div><div class="l">${isAccredited(u.uid)?'Accredited '+currentQuarter():'Accreditation '+currentQuarter()}</div></div>
+    <div class="card stat"><div class="n">${mand.filter(c=>passedThisQuarter(u.uid,c)).length}/${mand.length}</div><div class="l">Mandatory courses passed</div></div>
+    <div class="card stat"><div class="n">${avg===null?'—':avg+'%'}</div><div class="l">Avg score this quarter</div></div>
+    <div class="card stat"><div class="n">${certs.length}</div><div class="l">Certificates on file</div></div>
+  </div>
+  <h3 style="margin:0 0 .7rem">Course status — ${currentQuarter()}</h3>
+  <div class="card tblwrap" style="margin-bottom:1.6rem"><table>
+    <tr><th>Course</th><th>Modules</th><th>Progress</th><th>Best score</th><th>Status</th></tr>
+    ${DB.courses.filter(c=>c.status==='published').map(c=>{
+      const ps=passedThisQuarter(u.uid,c),pc=coursePct(u.uid,c),scr=bestScore(u.uid,c),p=prog(u.uid,c.id);
+      const modsDone=p?p.mods.filter(mm=>c.modules.some(x=>x.id===mm)).length:0;
+      return `<tr><td><b>${esc(c.title)}</b><br><span style="color:var(--ink-soft);font-size:.78rem">${esc(c.cat)}${c.mandatory?' · mandatory':''}</span></td>
+      <td>${modsDone}/${c.modules.length}</td><td>${pc}%</td><td>${scr===null?'—':scr+'%'}</td>
+      <td>${ps?'<span class="chip chip-ok">✓ Passed</span>':(pc>0?'<span class="chip chip-warn">In progress</span>':'<span class="chip chip-bad">Not started</span>')}</td></tr>`;}).join('')}
+  </table></div>
+  <h3 style="margin:0 0 .7rem">Certificates</h3>
+  <div class="card tblwrap" style="margin-bottom:1.6rem"><table>
+    <tr><th>Certificate</th><th>Score</th><th>Quarter</th><th>Date</th><th>Source</th></tr>
+    ${certs.map(ct=>`<tr><td><b>🏅 ${esc(ct.title)}</b></td><td>${ct.score}%</td><td>${ct.quarter}</td>
+      <td>${new Date(ct.date).toLocaleDateString('en-IE')}</td><td style="font-size:.8rem">${esc(ct.src)}</td></tr>`).join('')
+      ||'<tr><td colspan="5" style="color:var(--ink-soft)">No certificates yet.</td></tr>'}
+  </table></div>
+  <h3 style="margin:0 0 .7rem">Test attempt history</h3>
+  <div class="card tblwrap"><table>
+    <tr><th>Date</th><th>Course</th><th>Score</th><th>Result</th></tr>
+    ${attempts.map(a=>`<tr><td>${new Date(a.date).toLocaleString('en-IE')}</td><td>${esc(a.course)}</td><td>${a.score}%</td>
+      <td>${a.passed?'<span class="chip chip-ok">Passed</span>':'<span class="chip chip-bad">Failed</span>'}</td></tr>`).join('')
+      ||'<tr><td colspan="4" style="color:var(--ink-soft)">No test attempts yet.</td></tr>'}
+  </table></div>`;
+}
+function exportStaffCSV(uid){
+  const u=DB.users.find(x=>x.uid===uid); if(!u)return;
+  const certs=staffCerts(u);
+  let rows=[['Staff record for',u.name,u.id,u.email,'Generated',new Date().toLocaleString('en-IE')],[],
+    ['CERTIFICATES'],['Certificate','Score %','Quarter','Date','Source']];
+  certs.forEach(ct=>rows.push([ct.title,ct.score,ct.quarter,new Date(ct.date).toLocaleDateString('en-IE'),ct.src]));
+  rows.push([],['TEST ATTEMPTS'],['Date','Course','Score %','Passed']);
+  DB.progress.filter(p=>p.uid===uid).forEach(p=>{const c=DB.courses.find(x=>x.id===p.cid);
+    p.attempts.forEach(a=>rows.push([new Date(a.date).toLocaleString('en-IE'),c?c.title:'',a.score,a.passed?'YES':'NO']));});
+  downloadCSV(rows,`LLH_staff_record_${u.id}.csv`);
 }
 
 /* =================== ADMIN: USERS =================== */
