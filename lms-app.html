@@ -924,19 +924,22 @@ function staffCerts(u){
     const c=DB.courses.find(x=>x.id===p.cid); if(!c)return;
     p.attempts.filter(a=>a.passed).forEach(a=>{
       const k=c.id+'|'+quarterOf(a.date);
-      if(!lms[k]||a.score>lms[k].score) lms[k]={title:c.title,score:a.score,date:a.date,quarter:quarterOf(a.date),src:'LMS knowledge test'};
+      if(!lms[k]||a.score>lms[k].score) lms[k]={title:c.title,score:a.score,date:a.date,quarter:quarterOf(a.date),src:'LMS knowledge test',cid:c.id};
     });
   });
   // Certificates from standalone training modules (matched by email)
   const legacy=(DB.certs||[]).filter(r=>r.email&&r.email.toLowerCase()===u.email.toLowerCase()&&r.passed)
-    .map(r=>({title:r.module_title,score:r.score,date:r.created_at,quarter:quarterOf(r.created_at),src:'Training module'+(r.cert_sent_at?' · certificate emailed':''),certSent:r.cert_sent_at}));
+    .map(r=>{const mc=DB.courses.find(c=>c.title.toLowerCase()===String(r.module_title||'').toLowerCase());
+      return {title:r.module_title,score:r.score,date:r.created_at,quarter:quarterOf(r.created_at),src:'Training module'+(r.cert_sent_at?' · certificate emailed':''),certSent:r.cert_sent_at,cid:mc?mc.id:null};});
   return [...Object.values(lms),...legacy].sort((a,b)=>new Date(b.date)-new Date(a.date));
 }
+let CERT_CACHE=null;
 function renderStaffFolder(m){
   const u=DB.users.find(x=>x.uid===SEL_UID);
   if(!u){ SEL_UID=null; return render(); }
   const mand=mandatoryCourses();
   const certs=staffCerts(u);
+  CERT_CACHE={u,certs};
   const attempts=DB.progress.filter(p=>p.uid===u.uid).flatMap(p=>{
     const c=DB.courses.find(x=>x.id===p.cid);
     return p.attempts.map(a=>({course:c?c.title:'—',date:a.date,score:a.score,passed:a.passed}));
@@ -967,10 +970,11 @@ function renderStaffFolder(m){
   </table></div>
   <h3 style="margin:0 0 .7rem">Certificates</h3>
   <div class="card tblwrap" style="margin-bottom:1.6rem"><table>
-    <tr><th>Certificate</th><th>Score</th><th>Quarter</th><th>Date</th><th>Source</th></tr>
-    ${certs.map(ct=>`<tr><td><b>🏅 ${esc(ct.title)}</b></td><td>${ct.score}%</td><td>${ct.quarter}</td>
-      <td>${new Date(ct.date).toLocaleDateString('en-IE')}</td><td style="font-size:.8rem">${esc(ct.src)}</td></tr>`).join('')
-      ||'<tr><td colspan="5" style="color:var(--ink-soft)">No certificates yet.</td></tr>'}
+    <tr><th>Certificate</th><th>Score</th><th>Quarter</th><th>Date</th><th>Source</th><th></th></tr>
+    ${certs.map((ct,i)=>`<tr><td><b>🏅 ${esc(ct.title)}</b></td><td>${ct.score}%</td><td>${ct.quarter}</td>
+      <td>${new Date(ct.date).toLocaleDateString('en-IE')}</td><td style="font-size:.8rem">${esc(ct.src)}</td>
+      <td><button class="btn btn-soft btn-sm" onclick="viewCert(${i})">📜 View</button></td></tr>`).join('')
+      ||'<tr><td colspan="6" style="color:var(--ink-soft)">No certificates yet.</td></tr>'}
   </table></div>
   <h3 style="margin:0 0 .7rem">Test attempt history</h3>
   <div class="card tblwrap"><table>
@@ -979,6 +983,80 @@ function renderStaffFolder(m){
       <td>${a.passed?'<span class="chip chip-ok">Passed</span>':'<span class="chip chip-bad">Failed</span>'}</td></tr>`).join('')
       ||'<tr><td colspan="4" style="color:var(--ink-soft)">No test attempts yet.</td></tr>'}
   </table></div>`;
+}
+function viewCert(i){
+  if(!CERT_CACHE)return;
+  const u=CERT_CACHE.u, ct=CERT_CACHE.certs[i]; if(!ct)return;
+  const course=ct.cid?DB.courses.find(c=>c.id===ct.cid):null;
+  const included=course&&course.modules.length
+    ?'Covered: '+course.modules.map(md=>md.title).join(', ')+'.'
+    :'Covered types and signs of abuse, legal responsibilities, reporting procedures, confidentiality, and promoting a safe environment.';
+  const logo=new URL('liberty-living-logo.png',location.href).href;
+  const dt=new Date(ct.date), dstr=('0'+dt.getDate()).slice(-2)+'/'+('0'+(dt.getMonth()+1)).slice(-2)+'/'+dt.getFullYear();
+  const wave='<svg viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">'+
+    Array.from({length:14},(_,k)=>'<path d="M '+(10+k*6)+' 300 C '+(40+k*7)+' '+(200-k*6)+', '+(140-k*4)+' '+(120-k*4)+', '+(20+k*5)+' 0" stroke="#9aa5a0" stroke-width="0.8" opacity="0.55"/>').join('')+'</svg>';
+  const medal='<svg width="92" height="120" viewBox="0 0 92 120" xmlns="http://www.w3.org/2000/svg">'+
+    '<polygon points="30,70 24,118 46,104 68,118 62,70" fill="#B23A3F"/><polygon points="34,70 30,110 46,100 62,110 58,70" fill="#8E2F33"/>'+
+    '<circle cx="46" cy="46" r="40" fill="#D99A2B"/><circle cx="46" cy="46" r="33" fill="#E8B54A"/>'+
+    '<circle cx="46" cy="46" r="26" fill="#D99A2B"/><circle cx="46" cy="46" r="26" fill="url(#g)"/>'+
+    '<defs><radialGradient id="g" cx="0.35" cy="0.3"><stop offset="0" stop-color="#F5D488"/><stop offset="1" stop-color="#C8871F"/></radialGradient></defs></svg>';
+  const w=window.open('','_blank');
+  if(!w){toast('Allow pop-ups to view certificates');return;}
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+  <title>Certificate — ${esc(u.name)} — ${esc(ct.title)}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Quicksand:wght@400;500;600;700&family=La+Belle+Aurore&display=swap" rel="stylesheet">
+  <style>
+    @page{size:A4 landscape;margin:0}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:#8a8f8c;font-family:'Quicksand',sans-serif;color:#16281F}
+    .sheet{width:1122px;height:793px;margin:24px auto;background:#F6F5F0;position:relative;overflow:hidden;
+      box-shadow:0 20px 60px rgba(0,0,0,.35);padding:70px 90px;text-align:center;
+      background-image:radial-gradient(circle at 12% 8%,rgba(81,96,83,.05) 0,transparent 40%),radial-gradient(circle at 90% 90%,rgba(114,47,56,.04) 0,transparent 40%)}
+    .wave{position:absolute;width:300px;height:300px;pointer-events:none}
+    .wave.tl{top:-40px;left:-30px}
+    .wave.br{bottom:-40px;right:-30px;transform:rotate(180deg)}
+    h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:86px;letter-spacing:.06em;line-height:1;color:#1d2a22}
+    .sub{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:38px;letter-spacing:.18em;margin-top:2px}
+    .logo{height:84px;margin:18px auto 6px;display:block}
+    .given{font-family:'Cormorant Garamond',serif;font-size:24px;letter-spacing:.22em;margin-top:10px}
+    .name{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:64px;margin-top:8px;color:#16281F}
+    .rule{display:flex;align-items:center;gap:0;margin:10px 60px 26px}
+    .rule::before,.rule::after{content:'';width:9px;height:9px;border-radius:50%;background:#16281F}
+    .rule span{flex:1;height:2px;background:#16281F}
+    .body1{font-size:19px;font-weight:600;margin:0 40px}
+    .body2{font-size:16px;font-weight:700;margin-top:14px}
+    .body3{font-size:15.5px;font-weight:500;margin:6px 60px;color:#33463A}
+    .score{font-size:14px;font-weight:700;color:#722F38;margin-top:10px;letter-spacing:.06em;text-transform:uppercase}
+    .sigrow{display:flex;justify-content:space-between;align-items:flex-end;margin:46px 60px 0}
+    .sig{width:300px}
+    .sig .line{border-bottom:2px solid #16281F;height:52px}
+    .sig .who{font-size:19px;font-weight:600;margin-top:10px}
+    .date{font-size:20px;font-weight:700;margin-top:26px}
+    .printbtn{position:fixed;top:16px;right:16px;background:#33463A;color:#fff;border:0;border-radius:10px;
+      padding:12px 20px;font-family:'Quicksand',sans-serif;font-weight:700;font-size:15px;cursor:pointer}
+    @media print{.printbtn{display:none}body{background:#fff}.sheet{margin:0;box-shadow:none;width:100%;height:100vh}}
+  </style></head><body>
+  <button class="printbtn" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <div class="sheet">
+    <div class="wave tl">${wave}</div><div class="wave br">${wave}</div>
+    <h1>CERTIFICATE</h1>
+    <div class="sub">OF ACHIEVEMENT</div>
+    <img class="logo" src="${logo}" alt="Liberty Living Homecare">
+    <div class="given">THE FOLLOWING AWARD IS GIVEN TO</div>
+    <div class="name">${esc(u.name)}</div>
+    <div class="rule"><span></span></div>
+    <div class="body1">For their participation and successful completion of ${esc(ct.title)}</div>
+    <div class="body2">This course included:</div>
+    <div class="body3">${esc(included)}</div>
+    <div class="score">Final assessment score: ${ct.score}% · ${ct.quarter}</div>
+    <div class="sigrow">
+      <div class="sig"><div class="line"></div><div class="who">Director of Care</div></div>
+      <div style="margin-bottom:-8px">${medal}</div>
+      <div class="sig"><div class="line"></div><div class="who">Trainer</div></div>
+    </div>
+    <div class="date">${dstr}</div>
+  </div></body></html>`);
+  w.document.close();
 }
 function exportStaffCSV(uid){
   const u=DB.users.find(x=>x.uid===uid); if(!u)return;
