@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liberty Living Homecare — Learning Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Caveat:wght@600;700&family=Albert+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --ever:#0C2E20; --ever-deep:#081F15; --ever-soft:#1E4A36;
+  --support:#5A6C5C; --main-green:#A6CDAD; --burgundy:#6D2639;
+  --cream:#F0F1EF; --card:#FFFFFF; --paper:#E6ECE5;
+  --clay:#6D2639; --clay-soft:#EBD9DE; --gold:#A6CDAD;
+  --ink:#1B2A22; --ink-soft:#5A6C5C; --line:#D9E0D8;
+  --ok:#1E5A3C; --ok-bg:#DCEEE0; --warn:#51624F; --warn-bg:#E7EDE4; --bad:#6D2639; --bad-bg:#F0DEE3;
+  --r:14px; --shadow:0 6px 24px rgba(12,46,32,.10);
+  --disp:'Quicksand',sans-serif; --body:'Albert Sans',sans-serif; --script:'Caveat',cursive;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--cream);color:var(--ink);min-height:100vh;
+  background-image:radial-gradient(circle at 8% 12%,rgba(166,205,173,.16),transparent 40%),radial-gradient(circle at 92% 88%,rgba(12,46,32,.07),transparent 45%);}
+h1,h2,h3,.disp{font-family:var(--disp)}
+button{font-family:var(--body);cursor:pointer}
+input,select,textarea{font-family:var(--body);font-size:.95rem;padding:.65rem .8rem;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ever-soft);box-shadow:0 0 0 3px rgba(30,74,54,.12)}
+label{font-size:.8rem;font-weight:600;color:var(--ink-soft);display:block;margin:.7rem 0 .25rem;text-transform:uppercase;letter-spacing:.04em}
+.btn{border:none;border-radius:10px;padding:.7rem 1.2rem;font-weight:700;font-size:.92rem;transition:transform .12s,box-shadow .12s;display:inline-flex;align-items:center;gap:.45rem;text-decoration:none}
+.btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.btn-primary{background:var(--ever);color:var(--cream)}
+.btn-clay{background:var(--clay);color:#fff}
+.btn-ghost{background:transparent;color:var(--ever);border:1.5px solid var(--ever)}
+.btn-soft{background:var(--paper);color:var(--ever)}
+.btn-sm{padding:.4rem .75rem;font-size:.8rem;border-radius:8px}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.chip{display:inline-flex;align-items:center;gap:.3rem;padding:.22rem .6rem;border-radius:999px;font-size:.72rem;font-weight:700;letter-spacing:.02em}
+.chip-ok{background:var(--ok-bg);color:var(--ok)} .chip-warn{background:var(--warn-bg);color:var(--warn)}
+.chip-bad{background:var(--bad-bg);color:var(--bad)} .chip-mut{background:var(--paper);color:var(--ink-soft)}
+.chip-gold{background:var(--ever);color:#fff}
+.hidden{display:none!important}
+#loginView{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.login-wrap{display:grid;grid-template-columns:1.05fr 1fr;max-width:920px;width:100%;border-radius:22px;overflow:hidden;box-shadow:0 24px 60px rgba(8,31,21,.25);animation:rise .6s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.login-left{background:linear-gradient(160deg,var(--ever-deep),var(--ever) 55%,var(--ever-soft));color:var(--cream);padding:3rem 2.6rem;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.login-left::after{content:"";position:absolute;width:340px;height:340px;border-radius:50%;border:38px solid rgba(166,205,173,.16);right:-120px;bottom:-140px}
+.login-left h1{font-size:2.2rem;font-weight:700;line-height:1.12;margin-top:1.4rem}
+.login-left p{margin-top:1rem;color:#CFDDD4;line-height:1.55;font-size:.95rem;max-width:34ch}
+.logo{display:inline-flex;flex-direction:column;line-height:1;font-family:var(--disp);font-weight:700;letter-spacing:.005em}
+.logo .word{font-size:1.5rem;white-space:nowrap}
+.logo .w1{color:var(--ever)} .logo .w2{color:var(--main-green)}
+.logo .lv{width:.6em;height:.6em;display:inline-block;margin:0 .015em;transform:translateY(.02em)}
+.logo .home{font-family:var(--script);font-weight:700;color:var(--ever);align-self:flex-end;font-size:1.05rem;margin-top:.05rem}
+.logo.on-dark .w1{color:var(--cream)} .logo.on-dark .home{color:var(--main-green)}
+.logo.sm .word{font-size:1.15rem} .logo.sm .home{font-size:.85rem}
+.logo.lg .word{font-size:1.9rem} .logo.lg .home{font-size:1.25rem}
+.login-right{background:var(--card);padding:3rem 2.6rem}
+.login-right h2{font-size:1.5rem;margin-bottom:.3rem}
+.login-right .sub{color:var(--ink-soft);font-size:.9rem}
+.setup-link{margin-top:1.2rem;font-size:.8rem;color:var(--ink-soft);text-align:center}
+.setup-link a{color:var(--burgundy);font-weight:700;cursor:pointer}
+.err{color:var(--bad);font-size:.85rem;margin-top:.6rem;font-weight:600}
+#appView{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+.side{background:var(--ever-deep);color:#BFD3CA;padding:1.4rem 1rem;display:flex;flex-direction:column;gap:.2rem;position:sticky;top:0;height:100vh}
+.side .logo{margin-bottom:1.6rem;padding:0 .5rem}
+.nav-btn{background:none;border:none;color:#9FB8AD;text-align:left;padding:.62rem .8rem;border-radius:9px;font-size:.9rem;font-weight:600;display:flex;gap:.55rem;align-items:center;transition:background .15s}
+.nav-btn:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-btn.active{background:var(--ever-soft);color:#fff}
+.side .spacer{flex:1}
+.me{padding:.8rem;border-top:1px solid rgba(255,255,255,.12);font-size:.8rem;line-height:1.45}
+.me b{color:#fff;display:block;font-size:.88rem}
+.me .pwlink{color:var(--main-green);cursor:pointer;font-size:.75rem;text-decoration:underline}
+.main{padding:2rem 2.4rem;max-width:1180px;width:100%}
+.pagehead{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.pagehead h2{font-size:1.7rem;font-weight:700}
+.pagehead .sub{color:var(--ink-soft);font-size:.9rem;margin-top:.25rem}
+.grid{display:grid;gap:1.1rem}
+.grid.cols3{grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+.grid.cols4{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+.stat{padding:1.1rem 1.25rem}
+.stat .n{font-family:var(--disp);font-size:2rem;font-weight:700;color:var(--ever)}
+.stat .l{font-size:.78rem;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;margin-top:.2rem}
+.ccard{padding:1.25rem;display:flex;flex-direction:column;gap:.7rem;transition:transform .15s}
+.ccard:hover{transform:translateY(-3px)}
+.ccard h3{font-size:1.08rem;line-height:1.3}
+.ccard .meta{display:flex;gap:.4rem;flex-wrap:wrap}
+.pbar{height:8px;background:var(--paper);border-radius:99px;overflow:hidden}
+.pbar>span{display:block;height:100%;background:linear-gradient(90deg,var(--ever-soft),var(--main-green));border-radius:99px;transition:width .4s}
+.modicons{color:var(--ink-soft);font-size:.8rem;display:flex;gap:.7rem;flex-wrap:wrap}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);padding:.6rem .75rem;border-bottom:2px solid var(--line)}
+td{padding:.65rem .75rem;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.tblwrap{overflow-x:auto;padding:.4rem}
+.player{display:grid;grid-template-columns:280px 1fr;gap:1.2rem;align-items:start}
+.modlist{padding:.7rem;display:flex;flex-direction:column;gap:.3rem}
+.moditem{display:flex;align-items:center;gap:.6rem;padding:.65rem .7rem;border-radius:9px;border:none;background:none;text-align:left;font-size:.88rem;font-weight:600;color:var(--ink);width:100%;transition:background .15s}
+.moditem:hover{background:var(--paper)}
+.moditem.active{background:var(--ever);color:var(--cream)}
+.moditem .mtick{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-size:.65rem;flex-shrink:0}
+.moditem .mtick.done{background:var(--ok);border-color:var(--ok);color:#fff}
+.stage{padding:1.6rem;min-height:420px}
+.media-slot{background:linear-gradient(150deg,var(--ever-deep),var(--ever));border-radius:12px;color:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7rem;padding:2.4rem 1.5rem;text-align:center;margin:1rem 0}
+.media-slot .icon{font-size:2.4rem}
+.media-slot .note{font-size:.78rem;color:#A9C2B8;max-width:42ch}
+.media-real{margin:1rem 0}
+.media-real video,.media-real audio{width:100%;border-radius:12px;background:#000}
+.sim-progress{width:70%;height:6px;background:rgba(255,255,255,.18);border-radius:99px;overflow:hidden}
+.sim-progress span{display:block;height:100%;width:0;background:var(--main-green);border-radius:99px}
+.scn-step{animation:rise .35s ease both}
+.scn-choice{display:block;width:100%;text-align:left;margin:.45rem 0;padding:.85rem 1rem;border-radius:10px;border:1.5px solid var(--line);background:#fff;font-size:.92rem;transition:border-color .15s,background .15s}
+.scn-choice:hover{border-color:var(--ever-soft);background:var(--paper)}
+.scn-feedback{padding:.9rem 1rem;border-radius:10px;margin:.8rem 0;font-size:.9rem;line-height:1.5}
+.scn-feedback.good{background:var(--ok-bg);color:var(--ok)} .scn-feedback.poor{background:var(--warn-bg);color:var(--warn)}
+.qopt{display:block;width:100%;text-align:left;margin:.4rem 0;padding:.75rem 1rem;border-radius:10px;border:1.5px solid var(--line);background:#fff;font-size:.92rem}
+.qopt.sel{border-color:var(--ever);background:var(--paper);font-weight:700}
+.qnum{font-size:.75rem;font-weight:800;color:var(--burgundy);text-transform:uppercase;letter-spacing:.08em}
+.overlay{position:fixed;inset:0;background:rgba(8,31,21,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:1.2rem;animation:fadein .2s ease}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+.modal{background:var(--card);border-radius:16px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;padding:1.8rem;animation:rise .3s ease both}
+.modal h3{font-size:1.25rem;margin-bottom:.8rem}
+.modal .x{float:right;background:none;border:none;font-size:1.3rem;color:var(--ink-soft)}
+pre.email{white-space:pre-wrap;background:var(--paper);border-radius:10px;padding:1rem;font-size:.82rem;font-family:ui-monospace,monospace;line-height:1.6;max-height:320px;overflow-y:auto}
+#toast{position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ever-deep);color:var(--cream);padding:.8rem 1.4rem;border-radius:12px;font-weight:600;font-size:.9rem;transition:transform .3s;z-index:99;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+#toast.show{transform:translateX(-50%) translateY(0)}
+.stars{display:flex;gap:.3rem;font-size:1.6rem}
+.stars button{background:none;border:none;color:#D8CFBB;transition:color .1s,transform .1s}
+.stars button.on{color:var(--burgundy)} .stars button:hover{transform:scale(1.15)}
+.accr-banner{padding:1.1rem 1.4rem;border-radius:var(--r);display:flex;align-items:center;gap:1rem;margin-bottom:1.4rem;font-weight:600}
+.accr-banner.ok{background:var(--ok-bg);color:var(--ok);border:1px solid var(--main-green)}
+.accr-banner.warn{background:var(--warn-bg);color:var(--warn);border:1px solid #C6D2C3}
+.accr-banner .big{font-size:1.5rem}
+#loading{position:fixed;inset:0;background:var(--cream);display:flex;align-items:center;justify-content:center;z-index:200;flex-direction:column;gap:1rem;transition:opacity .3s}
+.spin{width:44px;height:44px;border-radius:50%;border:4px solid var(--paper);border-top-color:var(--ever);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.uprow{display:flex;gap:.5rem;align-items:center;margin:.3rem 0;font-size:.88rem;flex-wrap:wrap}
+/* lesson (text module) content */
+.tmod{line-height:1.62;font-size:.95rem}
+.tmod h3{margin:1.3rem 0 .5rem;font-size:1.08rem}
+.tmod h4{margin:.2rem 0 .3rem;font-size:.95rem}
+.tmod p{margin:.6rem 0}
+.tmod ul{margin:.6rem 0 .6rem 1.2rem}
+.tmod li{margin:.35rem 0}
+.tmod .objective{background:var(--paper);border-left:4px solid var(--main-green);padding:.7rem .9rem;border-radius:0 10px 10px 0;font-weight:600;color:var(--ever)}
+.tmod .callout{border-radius:12px;padding:1rem 1.1rem;margin:1rem 0;border:1px solid var(--line);background:#fff}
+.tmod .callout .head{display:block;margin-bottom:.35rem;color:var(--ever)}
+.tmod .callout.gold{background:#F4F8F3;border-color:var(--main-green)}
+.tmod .callout.teal{background:var(--paper);border-color:var(--support)}
+.tmod .callout.coral{background:var(--bad-bg);border-color:var(--burgundy)}
+.tmod .flip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.7rem;margin:1rem 0}
+.tmod .abuse-card{border:1.5px solid var(--line);border-radius:12px;padding:.8rem .9rem;cursor:pointer;background:#fff;transition:border-color .15s}
+.tmod .abuse-card:hover{border-color:var(--ever-soft)}
+.tmod .abuse-card .tog{float:right;color:var(--burgundy);font-weight:800}
+.tmod .abuse-card .body{display:none;margin-top:.6rem;font-size:.88rem;color:var(--ink-soft)}
+.tmod .abuse-card.open{border-color:var(--ever)} .tmod .abuse-card.open .body{display:block}
+.tmod .abuse-card.open .tog{transform:rotate(45deg);display:inline-block}
+.tmod .dd-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin:1rem 0}
+.tmod .dd{border-radius:12px;padding:.9rem 1rem}
+.tmod .dd.do{background:var(--ok-bg);border:1px solid var(--main-green)}
+.tmod .dd.dont{background:var(--bad-bg);border:1px solid #D9B3BD}
+.tmod .scenario{background:var(--paper);border-radius:12px;padding:1rem 1.1rem;margin:.8rem 0;font-style:normal}
+.tmod .scenario .stag{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--burgundy)}
+.tmod .scenario .narr{font-style:italic}
+.tmod .pathway{margin:.8rem 0}
+.tmod .pathstep{display:flex;gap:.8rem;align-items:flex-start;padding:.55rem 0;border-bottom:1px dashed var(--line)}
+.tmod .pathstep:last-child{border-bottom:none}
+.tmod .pathnum{width:28px;height:28px;border-radius:50%;background:var(--ever);color:#fff;display:grid;place-items:center;font-weight:800;font-size:.85rem;flex-shrink:0}
+.tmod .pathstep .txt span{display:block;color:var(--ink-soft);font-size:.85rem}
+.tmod .card{padding:1rem 1.1rem;margin:1rem 0}
+.tmod .small{font-size:.78rem;color:var(--ink-soft)}
+.tmod img{max-width:100%}
+.qstem{background:var(--paper);border-left:4px solid var(--burgundy);padding:.8rem 1rem;border-radius:0 10px 10px 0;font-style:italic;margin-bottom:.8rem;line-height:1.55}
+@media(max-width:900px){#appView{grid-template-columns:1fr}.side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center}.side .me{border:none}.player{grid-template-columns:1fr}.login-wrap{grid-template-columns:1fr}.login-left{display:none}.tmod .dd-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="spin"></div><div style="color:var(--ink-soft);font-weight:600">Loading Learning Hub…</div></div>
+
+<div id="loginView" class="hidden">
+  <div class="login-wrap">
+    <div class="login-left">
+      <div class="logo on-dark" id="logoLogin"></div>
+      <div>
+        <h1>Learning Hub</h1>
+        <p>Training, competency and quarterly accreditation for every member of the Liberty Living team — video, audio and real-world scenario learning in one place.</p>
+      </div>
+      <div style="font-size:.75rem;color:#87A296">Liberty Living Homecare · Internal</div>
+    </div>
+    <div class="login-right">
+      <h2 class="disp">Sign in</h2>
+      <div class="sub">Use your Employee ID (or email) and password.</div>
+      <form id="loginForm" onsubmit="return doLogin(event)">
+        <label>Employee ID</label>
+        <input id="loginId" placeholder="e.g. LLH-0003" autocomplete="username" required>
+        <label>Password</label>
+        <input id="loginPw" type="password" placeholder="••••••••" autocomplete="current-password" required>
+        <div class="err hidden" id="loginErr">Employee ID or password not recognised.</div>
+        <button class="btn btn-primary" id="loginBtn" style="width:100%;margin-top:1.2rem;justify-content:center">Sign in →</button>
+      </form>
+      <div class="setup-link">First time here? <a onclick="openBootstrap()">Set up the first admin account</a></div>
+    </div>
+  </div>
+</div>
+
+<div id="appView" class="hidden">
+  <aside class="side">
+    <div class="logo on-dark sm" id="logoSide"></div>
+    <nav id="navArea" style="display:flex;flex-direction:column;gap:.2rem"></nav>
+    <div class="spacer"></div>
+    <div class="me" id="meBox"></div>
+    <button class="nav-btn" onclick="logout()">⏻ &nbsp;Sign out</button>
+  </aside>
+  <main class="main" id="mainArea"></main>
+</div>
+
+<div id="modalRoot"></div>
+<div id="toast"></div>
+
+<script>
+/* =================== SUPABASE =================== */
+const SB_URL='https://gpaegnvcpygrfeillahn.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwYWVnbnZjcHlncmZlaWxsYWhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTA1MzAsImV4cCI6MjEwMDEyNjUzMH0.DN94N5_OxOpGCmIWlPPBq5VadhIjmJAZcC9id2-JZlA';
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
+
+let DB={users:[],courses:[],progress:[],feedback:[]};
+let ME=null, VIEW='home', PLAY=null, RT=null, _rtT=null;
+
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function logoHTML(){
+  return `<span class="word"><span class="w1">Liberty</span><span class="w2">Li<svg class="lv" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.2C7 16.7 3 13 3 8.7 3 5.7 5.3 3.4 8 3.4c1.6 0 3.1.8 4 2.1 0.9-1.3 2.4-2.1 4-2.1 2.7 0 5 2.3 5 5.3 0 4.3-4 8-9 12.5z" fill="currentColor"/><path d="M8.4 12.3l2.6 3.2 4.6-6.2" stroke="#6D2639" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>ing</span></span><span class="home">Homecare</span>`;
+}
+function logoBlock(cls){ return `<div class="logo ${cls||''}">${logoHTML()}</div>`; }
+
+/* =================== DATA LAYER =================== */
+async function loadData(){
+  const [emps,courses,mods,qs,comps,atts,fb]=await Promise.all([
+    sb.from('lms_employees').select('*').order('emp_id'),
+    sb.from('lms_courses').select('*').order('created_at'),
+    sb.from('lms_modules').select('*').order('position'),
+    sb.from('lms_questions').select('*').order('position'),
+    sb.from('lms_module_completions').select('*'),
+    sb.from('lms_quiz_attempts').select('*').order('created_at'),
+    sb.from('lms_feedback').select('*').order('created_at',{ascending:false})
+  ]);
+  for(const r of [emps,courses,mods,qs,comps,atts,fb]) if(r.error) throw r.error;
+  DB.users=(emps.data||[]).map(e=>({uid:e.user_id,id:e.emp_id,name:e.name,email:e.email,role:e.role,team:e.team,managerId:e.manager_emp_id}));
+  DB.courses=(courses.data||[]).map(c=>({
+    id:c.id,title:c.title,cat:c.category,mandatory:c.mandatory,passMark:c.pass_mark,status:c.status,version:c.version,
+    modules:(mods.data||[]).filter(m=>m.course_id===c.id).map(m=>({id:m.id,type:m.type,title:m.title,dur:m.duration_min,src:m.media_path,scenario:m.scenario})),
+    quiz:{questions:(qs.data||[]).filter(q=>q.course_id===c.id).map(q=>({id:q.id,q:q.q,opts:q.options,a:q.correct}))}
+  }));
+  const pmap={};
+  const key=(u,c)=>u+'|'+c;
+  const modCourse={}; (mods.data||[]).forEach(m=>modCourse[m.id]=m.course_id);
+  (comps.data||[]).forEach(r=>{ const cid=modCourse[r.module_id]; if(!cid)return;
+    const k=key(r.user_id,cid); pmap[k]=pmap[k]||{uid:r.user_id,cid,mods:[],attempts:[]}; pmap[k].mods.push(r.module_id); });
+  (atts.data||[]).forEach(a=>{ const k=key(a.user_id,a.course_id);
+    pmap[k]=pmap[k]||{uid:a.user_id,cid:a.course_id,mods:[],attempts:[]};
+    pmap[k].attempts.push({date:a.created_at,score:a.score,passed:a.passed}); });
+  DB.progress=Object.values(pmap);
+  DB.feedback=(fb.data||[]).map(f=>({id:f.id,uid:f.user_id,cid:f.course_id,rating:f.rating,comment:f.comment,date:f.created_at,status:f.status,adminNote:f.admin_note}));
+}
+
+/* =================== QUARTERS / ACCREDITATION =================== */
+function quarterOf(d){ d=new Date(d); return 'Q'+(Math.floor(d.getMonth()/3)+1)+' '+d.getFullYear(); }
+function currentQuarter(){ return quarterOf(new Date()); }
+function quarterEnd(){ const d=new Date(); const m=(Math.floor(d.getMonth()/3)+1)*3; return new Date(d.getFullYear(),m,0); }
+function prog(uid,cid){ return DB.progress.find(p=>p.uid===uid&&p.cid===cid); }
+function coursePct(uid,c){ const p=prog(uid,c.id); if(!p)return 0;
+  const total=c.modules.length+1; let done=p.mods.filter(m=>c.modules.some(x=>x.id===m)).length;
+  if(passedThisQuarter(uid,c))done++; return Math.round(done/total*100); }
+function passedThisQuarter(uid,c){ const p=prog(uid,c.id); if(!p)return false;
+  return p.attempts.some(a=>a.passed&&quarterOf(a.date)===currentQuarter()); }
+function bestScore(uid,c){ const p=prog(uid,c.id); if(!p||!p.attempts.length)return null;
+  const q=p.attempts.filter(a=>quarterOf(a.date)===currentQuarter()); if(!q.length)return null;
+  return Math.max(...q.map(a=>a.score)); }
+function mandatoryCourses(){ return DB.courses.filter(c=>c.mandatory&&c.status==='published'); }
+function isAccredited(uid){ return mandatoryCourses().every(c=>passedThisQuarter(uid,c)); }
+function accreditationPct(uid){ const m=mandatoryCourses(); if(!m.length)return 100;
+  return Math.round(m.filter(c=>passedThisQuarter(uid,c)).length/m.length*100); }
+
+/* =================== AUTH =================== */
+async function doLogin(e){ e.preventDefault();
+  const btn=document.getElementById('loginBtn'); btn.disabled=true;
+  const id=document.getElementById('loginId').value.trim();
+  const pw=document.getElementById('loginPw').value;
+  const errEl=document.getElementById('loginErr'); errEl.classList.add('hidden');
+  try{
+    let email=id;
+    if(!id.includes('@')){
+      const {data,error}=await sb.rpc('lms_email_for_emp',{p_emp_id:id});
+      if(error||!data) throw new Error('unknown');
+      email=data;
+    }
+    const {error:e2}=await sb.auth.signInWithPassword({email,password:pw});
+    if(e2) throw e2;
+    await enterApp();
+  }catch(err){ errEl.classList.remove('hidden'); }
+  btn.disabled=false; return false;
+}
+async function enterApp(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){ showLogin(); return; }
+  const {data:me,error}=await sb.from('lms_employees').select('*').eq('user_id',user.id).single();
+  if(error||!me){ toast('No employee profile found for this account.'); await sb.auth.signOut(); showLogin(); return; }
+  ME={uid:me.user_id,id:me.emp_id,name:me.name,email:me.email,role:me.role,team:me.team,managerId:me.manager_emp_id};
+  await loadData();
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('appView').classList.remove('hidden');
+  VIEW='home'; PLAY=null; setupRealtime(); renderShell();
+}
+function showLogin(){
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('appView').classList.add('hidden');
+  document.getElementById('loginView').classList.remove('hidden');
+}
+async function logout(){ if(RT){sb.removeChannel(RT);RT=null;} await sb.auth.signOut(); ME=null;
+  document.getElementById('loginForm').reset(); showLogin(); }
+
+/* live updates: refresh data when anyone completes modules / tests / feedback */
+function setupRealtime(){
+  if(RT) sb.removeChannel(RT);
+  RT=sb.channel('lms-live')
+    .on('postgres_changes',{event:'*',schema:'public',table:'lms_quiz_attempts'},rtRefresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'lms_module_completions'},rtRefresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'lms_feedback'},rtRefresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'lms_courses'},rtRefresh)
+    .subscribe();
+}
+function rtRefresh(){ clearTimeout(_rtT); _rtT=setTimeout(async()=>{
+  try{ await loadData(); if(!PLAY) render(); }catch(e){} },900); }
+
+/* =================== FIRST-TIME SETUP =================== */
+function openBootstrap(){
+  showModal(`<h3>First-time setup</h3>
+    <p style="color:var(--ink-soft);font-size:.88rem">Creates the founding administrator account. Only works once — after that, admins add everyone else from the Users screen.</p>
+    <label>Employee ID</label><input id="bsId" placeholder="LLH-0001">
+    <label>Full name</label><input id="bsName">
+    <label>Email</label><input id="bsEmail" type="email">
+    <label>Password (min 8 chars)</label><input id="bsPw" type="password">
+    <div class="err hidden" id="bsErr"></div>
+    <div style="display:flex;gap:.6rem;margin-top:1.2rem">
+      <button class="btn btn-primary" id="bsBtn" onclick="doBootstrap()">Create admin account</button>
+      <button class="btn btn-soft" onclick="closeModal()">Cancel</button></div>`);
+}
+async function doBootstrap(){
+  const b=document.getElementById('bsBtn'); b.disabled=true;
+  const body={action:'bootstrap',emp_id:val('bsId'),name:val('bsName'),email:val('bsEmail'),password:document.getElementById('bsPw').value};
+  try{
+    const r=await fetch(SB_URL+'/functions/v1/lms-admin',{method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},
+      body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!r.ok) throw new Error(j.error||'Setup failed');
+    closeModal(); toast('Admin account created — sign in now ✓');
+  }catch(err){ const e=document.getElementById('bsErr'); e.textContent=err.message; e.classList.remove('hidden'); }
+  b.disabled=false;
+}
+function val(id){ return document.getElementById(id).value.trim(); }
+
+/* =================== SHELL / NAV =================== */
+const NAVS={
+  staff:[['home','🎓','My Learning']],
+  manager:[['home','🎓','My Learning'],['team','👥','My Team'],['reports','📊','Reports']],
+  admin:[['home','🎓','My Learning'],['team','👥','All Staff'],['courses','🛠','Course Builder'],['feedback','💬','Feedback'],['reports','📊','Reports & Accreditation'],['users','🗂','Users']]
+};
+function renderShell(){
+  document.getElementById('logoLogin').innerHTML=logoHTML();
+  document.getElementById('logoSide').innerHTML=logoHTML();
+  const nav=document.getElementById('navArea');
+  nav.innerHTML=NAVS[ME.role].map(([v,i,l])=>
+    `<button class="nav-btn ${VIEW===v?'active':''}" onclick="go('${v}')">${i} &nbsp;${l}</button>`).join('');
+  document.getElementById('meBox').innerHTML=`<b>${esc(ME.name)}</b>${esc(ME.id)} · ${esc(ME.role)}<br>${esc(ME.team)}<br><span class="pwlink" onclick="openPw()">Change password</span>`;
+  render();
+}
+function go(v){ VIEW=v; PLAY=null; renderShell(); window.scrollTo(0,0); }
+function render(){
+  const m=document.getElementById('mainArea');
+  if(PLAY) return renderPlayer(m);
+  ({home:renderHome,team:renderTeam,courses:renderCourses,feedback:renderFeedback,reports:renderReports,users:renderUsers}[VIEW]||renderHome)(m);
+}
+async function refreshData(){ try{ await loadData(); render(); toast('Refreshed ✓'); }catch(e){ toast('Refresh failed'); } }
+function openPw(){
+  showModal(`<h3>Change password</h3>
+    <label>New password (min 8 chars)</label><input id="npw" type="password">
+    <div style="display:flex;gap:.6rem;margin-top:1.2rem">
+      <button class="btn btn-primary" onclick="savePw()">Update</button>
+      <button class="btn btn-soft" onclick="closeModal()">Cancel</button></div>`);
+}
+async function savePw(){
+  const p=document.getElementById('npw').value;
+  if(p.length<8){toast('Minimum 8 characters');return;}
+  const {error}=await sb.auth.updateUser({password:p});
+  if(error){toast(error.message);return;}
+  closeModal(); toast('Password updated ✓');
+}
+
+/* =================== STAFF: MY LEARNING =================== */
+function renderHome(m){
+  const cs=DB.courses.filter(c=>c.status==='published');
+  const acc=isAccredited(ME.uid), pct=accreditationPct(ME.uid);
+  const days=Math.ceil((quarterEnd()-new Date())/86400000);
+  m.innerHTML=`
+  <div class="pagehead"><div><h2>My Learning</h2><div class="sub">Welcome back, ${esc(ME.name.split(' ')[0])} — ${currentQuarter()} accreditation cycle</div></div>${logoBlock('lg')}</div>
+  <div class="accr-banner ${acc?'ok':'warn'}">
+    <span class="big">${acc?'✅':'⏳'}</span>
+    <div><b>${acc?`You are accredited for ${currentQuarter()}.`:`${currentQuarter()} accreditation: ${pct}% complete.`}</b><br>
+    <span style="font-weight:400;font-size:.85rem">${acc?'All mandatory courses passed this quarter. Well done!':`Pass all mandatory course tests before the quarter ends — ${days} day${days===1?'':'s'} left.`}</span></div>
+  </div>
+  <div class="grid cols3">
+    ${cs.map(c=>{
+      const pctc=coursePct(ME.uid,c), passed=passedThisQuarter(ME.uid,c), score=bestScore(ME.uid,c);
+      return `<div class="card ccard">
+        <div class="meta">
+          <span class="chip chip-mut">${esc(c.cat)}</span>
+          ${c.mandatory?'<span class="chip chip-gold">Mandatory</span>':''}
+          ${passed?'<span class="chip chip-ok">✓ Passed'+(score!==null?' · '+score+'%':'')+'</span>':(pctc>0?'<span class="chip chip-warn">In progress</span>':'')}
+        </div>
+        <h3>${esc(c.title)}</h3>
+        <div class="modicons">${c.modules.map(md=>({video:'🎬 video',audio:'🎧 audio',scenario:'🧭 scenario',text:'📖 lesson'}[md.type])).join(' · ')}${c.quiz.questions.length?' · ✍️ test':''}</div>
+        <div class="pbar"><span style="width:${pctc}%"></span></div>
+        <button class="btn ${passed?'btn-soft':'btn-primary'} btn-sm" onclick="openCourse('${c.id}')">${passed?'Review course':(pctc>0?'Continue →':'Start course →')}</button>
+      </div>`;}).join('')}
+  </div>`;
+}
+
+/* =================== COURSE PLAYER =================== */
+function openCourse(cid){
+  PLAY={cid,modIdx:0,mode:'module',scnStep:0,scnActive:false,quizIdx:0,quizAns:[],quizResult:null}; render(); window.scrollTo(0,0); }
+function closeCourse(){ PLAY=null; render(); }
+function mediaUrl(path){ return sb.storage.from('lms-media').getPublicUrl(path).data.publicUrl; }
+function renderPlayer(m){
+  const c=DB.courses.find(x=>x.id===PLAY.cid); if(!c){PLAY=null;return render();}
+  const p=prog(ME.uid,c.id)||{mods:[],attempts:[]};
+  const passed=passedThisQuarter(ME.uid,c);
+  const hasQuiz=c.quiz.questions.length>0;
+  const allModsDone=c.modules.every(md=>p.mods.includes(md.id));
+  m.innerHTML=`
+  <button class="btn btn-ghost btn-sm" onclick="closeCourse()">← Back to My Learning</button>
+  <div class="pagehead" style="margin-top:1rem"><div>
+    <h2>${esc(c.title)}</h2>
+    <div class="sub">${esc(c.cat)} ${c.mandatory?'· Mandatory':''} ${hasQuiz?'· Pass mark '+c.passMark+'%':''} · ${currentQuarter()}</div>
+  </div>${passed?'<span class="chip chip-ok" style="font-size:.85rem">✓ Passed this quarter</span>':''}</div>
+  <div class="player">
+    <div class="card modlist">
+      ${c.modules.map((md,i)=>`
+        <button class="moditem ${PLAY.mode==='module'&&PLAY.modIdx===i?'active':''}" onclick="gotoMod(${i})">
+          <span class="mtick ${p.mods.includes(md.id)?'done':''}">${p.mods.includes(md.id)?'✓':''}</span>
+          <span>${{video:'🎬',audio:'🎧',scenario:'🧭',text:'📖'}[md.type]} ${esc(md.title)}</span>
+        </button>`).join('')}
+      ${hasQuiz?`<button class="moditem ${PLAY.mode==='quiz'?'active':''}" onclick="gotoQuiz()" ${allModsDone?'':'disabled style="opacity:.45"'}>
+        <span class="mtick ${passed?'done':''}">${passed?'✓':''}</span>
+        <span>✍️ Knowledge test${allModsDone?'':' (finish modules first)'}</span>
+      </button>`:''}
+    </div>
+    <div class="card stage" id="stage"></div>
+  </div>`;
+  PLAY.mode==='quiz'?renderQuiz(c,p):renderModule(c,p);
+}
+function gotoMod(i){ PLAY.mode='module'; PLAY.modIdx=i; PLAY.scnStep=0; PLAY.scnActive=false; render(); }
+function gotoQuiz(){ PLAY.mode='quiz'; PLAY.quizIdx=0; PLAY.quizAns=[]; PLAY.quizResult=null; render(); }
+
+async function completeModule(mid,quiet){
+  const c=DB.courses.find(x=>x.id===PLAY.cid);
+  let p=prog(ME.uid,c.id);
+  if(p&&p.mods.includes(mid))return;
+  const {error}=await sb.from('lms_module_completions').upsert({user_id:ME.uid,module_id:mid},{onConflict:'user_id,module_id',ignoreDuplicates:true});
+  if(error){toast('Could not save progress');return;}
+  if(!p){p={uid:ME.uid,cid:c.id,mods:[],attempts:[]};DB.progress.push(p);}
+  p.mods.push(mid);
+  if(!quiet)toast('Module complete ✓');
+  render();
+}
+
+function renderModule(c,p){
+  const md=c.modules[PLAY.modIdx], st=document.getElementById('stage'), done=p.mods.includes(md.id);
+  const nextBtn=PLAY.modIdx<c.modules.length-1
+    ?`<button class="btn btn-primary btn-sm" onclick="gotoMod(${PLAY.modIdx+1})">Next module →</button>`
+    :(c.quiz.questions.length?`<button class="btn btn-clay btn-sm" onclick="gotoQuiz()" ${c.modules.every(x=>p.mods.includes(x.id))?'':'disabled'}>Take the test →</button>`:'');
+  if(md.type==='scenario') return renderScenario(c,p,md,st);
+  if(md.type==='text'){
+    st.innerHTML=`
+      <div class="qnum">Lesson ${PLAY.modIdx+1} of ${c.modules.length}</div>
+      <h3 style="margin:.4rem 0 .8rem">${esc(md.title)}</h3>
+      <div class="tmod">${md.content||'<p>No content yet.</p>'}</div>
+      <div style="display:flex;gap:.6rem;margin-top:1.4rem;align-items:center;flex-wrap:wrap">
+        ${done?'<span class="chip chip-ok">✓ Completed</span>':`<button class="btn btn-primary btn-sm" onclick="completeModule('${md.id}')">Mark lesson complete ✓</button>`}
+        ${done?nextBtn:''}
+      </div>`;
+    return;
+  }
+  const icon=md.type==='video'?'🎬':'🎧', label=md.type==='video'?'Video module':'Audio module';
+  let media;
+  if(md.src){
+    const url=mediaUrl(md.src);
+    media=md.type==='video'
+      ?`<div class="media-real"><video controls preload="metadata" src="${esc(url)}" onended="completeModule('${md.id}')"></video></div>`
+      :`<div class="media-real"><audio controls preload="metadata" src="${esc(url)}" onended="completeModule('${md.id}')"></audio></div>`;
+    media+=done?'':`<div style="color:var(--ink-soft);font-size:.85rem">The module is marked complete when playback finishes — or <a href="#" onclick="completeModule('${md.id}');return false" style="color:var(--burgundy)">mark it complete</a>.</div>`;
+  }else{
+    media=`<div class="media-slot">
+      <div class="icon">${icon}</div>
+      <b>Media not uploaded yet</b>
+      <div class="note">An administrator can upload the ${md.type} file in Course Builder. For now, press play to simulate it.</div>
+      <div class="sim-progress"><span id="simBar"></span></div>
+      <button class="btn btn-clay btn-sm" id="simBtn" onclick="simulateMedia('${md.id}')">▶ ${done?'Play again':'Play'}</button>
+    </div>`;
+  }
+  st.innerHTML=`
+    <div class="qnum">${label} · ~${md.dur} min</div>
+    <h3 style="margin:.4rem 0 0">${esc(md.title)}</h3>
+    ${media}
+    <div style="display:flex;gap:.6rem;margin-top:1rem;align-items:center">${done?'<span class="chip chip-ok">✓ Completed</span>':''}${done?nextBtn:''}</div>`;
+}
+function simulateMedia(mid){
+  const bar=document.getElementById('simBar'), btn=document.getElementById('simBtn');
+  btn.disabled=true; bar.style.transition='width 3s linear'; requestAnimationFrame(()=>bar.style.width='100%');
+  setTimeout(()=>completeModule(mid),3100);
+}
+function renderScenario(c,p,md,st){
+  const sc=md.scenario, done=p.mods.includes(md.id);
+  let html=`<div class="qnum">Scenario module</div><h3 style="margin:.4rem 0 .8rem">${esc(md.title)}</h3>`;
+  if(!sc||!sc.steps){ st.innerHTML=html+'<p>No scenario content yet.</p>'; return; }
+  if(PLAY.scnStep===0&&!PLAY.scnActive){
+    html+=`<div class="scn-step"><p style="line-height:1.6;background:var(--paper);padding:1rem;border-radius:10px;font-style:italic">${esc(sc.intro)}</p>
+      <button class="btn btn-primary" style="margin-top:1rem" onclick="PLAY.scnActive=true;render()">Begin scenario →</button>
+      ${done?'<div style="margin-top:.8rem"><span class="chip chip-ok">✓ Completed previously</span></div>':''}</div>`;
+  } else if(PLAY.scnStep<sc.steps.length){
+    const step=sc.steps[PLAY.scnStep];
+    html+=`<div class="scn-step"><b>Step ${PLAY.scnStep+1} of ${sc.steps.length}</b>
+      <p style="margin:.6rem 0;font-weight:600">${esc(step.prompt)}</p>
+      <div id="scnFb"></div>
+      ${step.choices.map((ch,i)=>`<button class="scn-choice" onclick="pickChoice(${i})">${esc(ch.t)}</button>`).join('')}</div>`;
+  } else {
+    html+=`<div class="scn-step"><div class="scn-feedback good"><b>Scenario complete.</b> You worked through the situation — key decision points and correct actions have been highlighted.</div>
+      <button class="btn btn-soft btn-sm" onclick="PLAY.scnStep=0;PLAY.scnActive=false;render()">↻ Restart scenario</button></div>`;
+    if(!done) completeModule(md.id,true);
+  }
+  st.innerHTML=html;
+}
+function pickChoice(i){
+  const c=DB.courses.find(x=>x.id===PLAY.cid), md=c.modules[PLAY.modIdx], step=md.scenario.steps[PLAY.scnStep], ch=step.choices[i];
+  const fb=document.getElementById('scnFb');
+  fb.innerHTML=`<div class="scn-feedback ${ch.good?'good':'poor'}">${ch.good?'✓':'✎'} ${esc(ch.fb)} ${ch.good?'':'<br><b>Try again — choose the best action.</b>'}</div>`;
+  if(ch.good){ document.querySelectorAll('.scn-choice').forEach(b=>b.disabled=true);
+    setTimeout(()=>{PLAY.scnStep++;render();},1600); }
+}
+
+/* =================== QUIZ =================== */
+function renderQuiz(c,p){
+  const st=document.getElementById('stage'), qs=c.quiz.questions;
+  if(PLAY.quizResult){
+    const r=PLAY.quizResult;
+    const review=r.passed?'':qs.map((q,i)=>{
+      if(PLAY.quizAns[i]===q.a)return '';
+      return `<div class="scn-feedback poor" style="text-align:left"><b>Q${i+1}:</b> ${esc(q.q)}<br><span style="font-size:.85rem">${esc(q.fb||'')}</span></div>`;
+    }).join('');
+    st.innerHTML=`<div class="scn-step" style="text-align:center;padding:1.6rem 1rem">
+      <div style="font-size:3rem">${r.passed?'🏅':'📚'}</div>
+      <h3 style="margin:.6rem 0">${r.passed?'Test passed!':'Not quite this time'}</h3>
+      <div style="font-family:var(--disp);font-size:2.6rem;font-weight:700;color:${r.passed?'var(--ok)':'var(--burgundy)'}">${r.score}%</div>
+      <p style="color:var(--ink-soft);margin:.6rem 0 1.2rem">Pass mark ${c.passMark}% · ${r.correct}/${qs.length} correct · attempt recorded for ${currentQuarter()}</p>
+      ${review}
+      ${r.passed?`<button class="btn btn-clay" onclick="openFeedback('${c.id}')">Leave course feedback →</button>
+                  <button class="btn btn-soft" onclick="closeCourse()">Back to My Learning</button>`
+               :`<button class="btn btn-primary" onclick="gotoQuiz()">↻ Retake test</button>
+                  <button class="btn btn-soft" onclick="gotoMod(0)">Review modules</button>`}</div>`;
+    return;
+  }
+  const i=PLAY.quizIdx, q=qs[i];
+  st.innerHTML=`<div class="qnum">Knowledge test · Question ${i+1} of ${qs.length}</div>
+    ${q.stem?`<div class="qstem" style="margin-top:.6rem">${esc(q.stem)}</div>`:''}
+    <h3 style="margin:.3rem 0 1rem">${esc(q.q)}</h3>
+    ${q.opts.map((o,j)=>`<button class="qopt ${PLAY.quizAns[i]===j?'sel':''}" onclick="PLAY.quizAns[${i}]=${j};render()">${esc(o)}</button>`).join('')}
+    <div style="display:flex;justify-content:space-between;margin-top:1.2rem">
+      <button class="btn btn-soft btn-sm" ${i===0?'disabled':''} onclick="PLAY.quizIdx--;render()">← Previous</button>
+      ${i<qs.length-1
+        ?`<button class="btn btn-primary btn-sm" ${PLAY.quizAns[i]==null?'disabled':''} onclick="PLAY.quizIdx++;render()">Next →</button>`
+        :`<button class="btn btn-clay btn-sm" ${PLAY.quizAns[i]==null?'disabled':''} onclick="submitQuiz()">Submit test ✓</button>`}
+    </div>`;
+}
+async function submitQuiz(){
+  const c=DB.courses.find(x=>x.id===PLAY.cid), qs=c.quiz.questions;
+  const correct=qs.reduce((n,q,i)=>n+(PLAY.quizAns[i]===q.a?1:0),0);
+  const score=Math.round(correct/qs.length*100), passed=score>=c.passMark;
+  const {error}=await sb.from('lms_quiz_attempts').insert({user_id:ME.uid,course_id:c.id,score,passed});
+  if(error){toast('Could not save attempt — try again');return;}
+  let p=prog(ME.uid,c.id);
+  if(!p){p={uid:ME.uid,cid:c.id,mods:[],attempts:[]};DB.progress.push(p);}
+  p.attempts.push({date:new Date().toISOString(),score,passed});
+  PLAY.quizResult={score,passed,correct};
+  render();
+  if(passed&&isAccredited(ME.uid))setTimeout(()=>toast(`🏅 You are now fully accredited for ${currentQuarter()}!`),600);
+}
+
+/* =================== FEEDBACK (staff submit) =================== */
+let FB_RATING=0;
+function openFeedback(cid){
+  FB_RATING=0;
+  showModal(`<h3>Course feedback</h3>
+    <p style="color:var(--ink-soft);font-size:.9rem;margin-bottom:.6rem">Your feedback is reviewed each quarter and used to revise course content.</p>
+    <label>How would you rate this course?</label>
+    <div class="stars" id="fbStars">${[1,2,3,4,5].map(n=>`<button onclick="setStars(${n})">★</button>`).join('')}</div>
+    <label>Comments / suggested improvements</label>
+    <textarea id="fbText" rows="4" placeholder="What worked? What should we change?"></textarea>
+    <div style="display:flex;gap:.6rem;margin-top:1.2rem">
+      <button class="btn btn-primary" onclick="submitFeedback('${cid}')">Submit feedback</button>
+      <button class="btn btn-soft" onclick="closeModal()">Skip</button>
+    </div>`);
+}
+function setStars(n){ FB_RATING=n;
+  document.querySelectorAll('#fbStars button').forEach((b,i)=>b.classList.toggle('on',i<n)); }
+async function submitFeedback(cid){
+  const txt=document.getElementById('fbText').value.trim();
+  if(!FB_RATING&&!txt){toast('Add a rating or comment first');return;}
+  const {error}=await sb.from('lms_feedback').insert({user_id:ME.uid,course_id:cid,rating:FB_RATING,comment:txt});
+  if(error){toast('Could not submit feedback');return;}
+  closeModal(); toast('Thanks — feedback submitted ✓');
+}
+
+/* =================== MODAL =================== */
+function showModal(html){ document.getElementById('modalRoot').innerHTML=
+  `<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal"><button class="x" onclick="closeModal()">✕</button>${html}</div></div>`; }
+function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
+
+/* =================== TEAM (manager/admin) =================== */
+function myTeam(){ return ME.role==='admin'?DB.users.filter(u=>u.role!=='admin'):DB.users.filter(u=>u.managerId===ME.id&&u.uid!==ME.uid); }
+function renderTeam(m){
+  const team=myTeam(), mand=mandatoryCourses();
+  const accCount=team.filter(u=>isAccredited(u.uid)).length;
+  m.innerHTML=`
+  <div class="pagehead"><div><h2>${ME.role==='admin'?'All Staff':'My Team'}</h2>
+    <div class="sub">${currentQuarter()} accreditation · ${team.length} people · live data</div></div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn btn-soft btn-sm" onclick="refreshData()">↻ Refresh</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportTeamCSV()">⬇ Export CSV</button>
+      <button class="btn btn-clay btn-sm" onclick="emailReport()">✉ Email report</button>
+    </div></div>
+  <div class="grid cols4" style="margin-bottom:1.4rem">
+    <div class="card stat"><div class="n">${team.length}</div><div class="l">Team members</div></div>
+    <div class="card stat"><div class="n">${accCount}/${team.length}</div><div class="l">Fully accredited</div></div>
+    <div class="card stat"><div class="n">${mand.length}</div><div class="l">Mandatory courses</div></div>
+    <div class="card stat"><div class="n">${Math.ceil((quarterEnd()-new Date())/86400000)}</div><div class="l">Days left in quarter</div></div>
+  </div>
+  <div class="card tblwrap"><table>
+    <tr><th>Employee</th>${mand.map(c=>`<th>${esc(c.title.split(' ').slice(0,2).join(' '))}</th>`).join('')}<th>Accreditation</th></tr>
+    ${team.map(u=>`<tr>
+      <td><b>${esc(u.name)}</b><br><span style="color:var(--ink-soft);font-size:.78rem">${esc(u.id)} · ${esc(u.team)}</span></td>
+      ${mand.map(c=>{const ps=passedThisQuarter(u.uid,c),pc=coursePct(u.uid,c),sc=bestScore(u.uid,c);
+        return `<td>${ps?`<span class="chip chip-ok">✓ ${sc}%</span>`:(pc>0?`<span class="chip chip-warn">${pc}%</span>`:'<span class="chip chip-bad">Not started</span>')}</td>`;}).join('')}
+      <td>${isAccredited(u.uid)?'<span class="chip chip-ok">🏅 Accredited</span>':`<span class="chip chip-warn">${accreditationPct(u.uid)}%</span>`}</td>
+    </tr>`).join('')||'<tr><td colspan="99" style="color:var(--ink-soft)">No team members yet — add them in Users.</td></tr>'}
+  </table></div>`;
+}
+function exportTeamCSV(){
+  const team=myTeam(), mand=mandatoryCourses();
+  let rows=[['Employee ID','Name','Team',...mand.map(c=>c.title),'Accredited '+currentQuarter()]];
+  team.forEach(u=>rows.push([u.id,u.name,u.team,
+    ...mand.map(c=>passedThisQuarter(u.uid,c)?('PASSED '+bestScore(u.uid,c)+'%'):(coursePct(u.uid,c)>0?'IN PROGRESS':'NOT STARTED')),
+    isAccredited(u.uid)?'YES':'NO']));
+  downloadCSV(rows,`LLH_training_${currentQuarter().replace(' ','_')}.csv`);
+}
+function downloadCSV(rows,name){
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download=name; a.click();
+  toast('CSV downloaded ✓');
+}
+function buildReportText(){
+  const team=myTeam(), mand=mandatoryCourses();
+  const acc=team.filter(u=>isAccredited(u.uid));
+  const behind=team.filter(u=>!isAccredited(u.uid));
+  let t=`LIBERTY LIVING HOMECARE — TRAINING & ACCREDITATION REPORT\nQuarter: ${currentQuarter()}   Generated: ${new Date().toLocaleDateString('en-IE')}\nManager: ${ME.name} (${ME.id})\n\nSUMMARY\n- Team size: ${team.length}\n- Fully accredited: ${acc.length} (${team.length?Math.round(acc.length/team.length*100):0}%)\n- Mandatory courses this cycle: ${mand.length}\n- Days remaining in quarter: ${Math.ceil((quarterEnd()-new Date())/86400000)}\n\n`;
+  if(behind.length){ t+=`ACTION REQUIRED — NOT YET ACCREDITED\n`;
+    behind.forEach(u=>{ const missing=mand.filter(c=>!passedThisQuarter(u.uid,c)).map(c=>c.title);
+      t+=`- ${u.name} (${u.id}): outstanding — ${missing.join('; ')}\n`; }); t+='\n'; }
+  if(acc.length){ t+=`ACCREDITED\n`; acc.forEach(u=>t+=`- ${u.name} (${u.id})\n`); }
+  return t;
+}
+function emailReport(){
+  const body=buildReportText();
+  const mailto=`mailto:${encodeURIComponent(ME.email)}?subject=${encodeURIComponent('LLH Training Report — '+currentQuarter())}&body=${encodeURIComponent(body)}`;
+  showModal(`<h3>✉ Quarterly report email</h3>
+    <p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:.8rem">Preview below — live figures at the moment of generation.</p>
+    <pre class="email" id="emailBody">${esc(body)}</pre>
+    <div style="display:flex;gap:.6rem;margin-top:1rem">
+      <a class="btn btn-clay" href="${mailto}">Open in email app</a>
+      <button class="btn btn-soft" onclick="navigator.clipboard.writeText(document.getElementById('emailBody').innerText).then(()=>toast('Copied ✓'))">Copy text</button>
+    </div>`);
+}
+
+/* =================== ADMIN: COURSE BUILDER =================== */
+let WC=null; // working copy for the course editor
+function renderCourses(m){
+  m.innerHTML=`
+  <div class="pagehead"><div><h2>Course Builder</h2><div class="sub">Create and revise courses — lessons, video, audio, scenarios and tests. Changes go live instantly.</div></div>
+    <button class="btn btn-primary btn-sm" onclick="editCourse(null)">＋ New course</button></div>
+  <div class="grid cols3">
+    ${DB.courses.map(c=>`<div class="card ccard">
+      <div class="meta">
+        <span class="chip ${c.status==='published'?'chip-ok':'chip-mut'}">${c.status}</span>
+        ${c.mandatory?'<span class="chip chip-gold">Mandatory</span>':''}
+        <span class="chip chip-mut">v${c.version}</span>
+      </div>
+      <h3>${esc(c.title)}</h3>
+      <div class="modicons">${c.modules.length} modules · ${c.quiz.questions.length} test questions · pass ${c.passMark}%</div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="btn btn-soft btn-sm" onclick="editCourse('${c.id}')">✎ Edit</button>
+        <button class="btn btn-ghost btn-sm" onclick="togglePublish('${c.id}')">${c.status==='published'?'Unpublish':'Publish'}</button>
+      </div></div>`).join('')}
+  </div>`;
+}
+async function togglePublish(cid){ const c=DB.courses.find(x=>x.id===cid);
+  const ns=c.status==='published'?'draft':'published';
+  const {error}=await sb.from('lms_courses').update({status:ns}).eq('id',cid);
+  if(error){toast(error.message);return;}
+  c.status=ns; render(); toast(ns==='published'?'Course published — live for all staff ✓':'Course set to draft');
+}
+function editCourse(cid){
+  if(cid){ const c=DB.courses.find(x=>x.id===cid);
+    WC={dbId:cid,title:c.title,cat:c.cat,passMark:c.passMark,mandatory:c.mandatory,version:c.version,
+      modules:c.modules.map(md=>({...md,dbId:md.id})),
+      questions:c.quiz.questions.map(q=>({...q,dbId:q.id})),
+      delMods:[],delQs:[]};
+  } else if(!WC||WC.dbId!==null){
+    WC={dbId:null,title:'',cat:'General',passMark:80,mandatory:false,version:1,modules:[],questions:[],delMods:[],delQs:[]};
+  }
+  renderCourseModal();
+}
+function renderCourseModal(){
+  const c=WC;
+  showModal(`<h3>${c.dbId?'Edit course':'New course'}</h3>
+    <label>Title</label><input id="ecTitle" value="${esc(c.title)}">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.7rem">
+      <div><label>Category</label><input id="ecCat" value="${esc(c.cat)}"></div>
+      <div><label>Pass mark %</label><input id="ecPass" type="number" min="0" max="100" value="${c.passMark}"></div>
+      <div><label>Mandatory</label><select id="ecMand"><option value="1" ${c.mandatory?'selected':''}>Yes</option><option value="0" ${c.mandatory?'':'selected'}>No</option></select></div>
+    </div>
+    <label>Modules</label>
+    <div>${c.modules.map((md,i)=>`<div class="uprow">
+      <span>${{video:'🎬',audio:'🎧',scenario:'🧭',text:'📖'}[md.type]}</span><b style="flex:1">${esc(md.title)}</b>
+      ${(md.type==='video'||md.type==='audio')&&md.dbId?`
+        <span style="font-size:.75rem;color:var(--ink-soft)">${md.src?'🎞 media attached':'no media'}</span>
+        <button class="btn btn-soft btn-sm" onclick="document.getElementById('up${i}').click()">⬆ Upload</button>
+        <input type="file" id="up${i}" class="hidden" accept="${md.type==='video'?'video/*':'audio/*'}" onchange="uploadMedia(${i},this)">`:''}
+      <button class="btn btn-soft btn-sm" onclick="rmMod(${i})">✕</button></div>`).join('')||'<div style="color:var(--ink-soft);font-size:.85rem">No modules yet.</div>'}</div>
+    <div style="display:grid;grid-template-columns:110px 1fr auto;gap:.5rem;margin-top:.5rem">
+      <select id="ecNewType"><option value="video">🎬 Video</option><option value="audio">🎧 Audio</option><option value="text">📖 Lesson</option><option value="scenario">🧭 Scenario</option></select>
+      <input id="ecNewTitle" placeholder="Module title">
+      <button class="btn btn-soft btn-sm" onclick="addMod()">＋ Add</button>
+    </div>
+    <label>Test questions (${c.questions.length})</label>
+    <div style="color:var(--ink-soft);font-size:.83rem">${c.questions.map((q,i)=>`<div class="uprow">${i+1}. <span style="flex:1">${esc(q.q.slice(0,70))}${q.q.length>70?'…':''}</span><button class="btn btn-soft btn-sm" onclick="rmQ(${i})">✕</button></div>`).join('')||'None yet.'}</div>
+    <div style="display:grid;gap:.4rem;margin-top:.5rem">
+      <input id="ecQ" placeholder="New question…">
+      <input id="ecOpts" placeholder="Options separated by | (first one = correct answer)">
+      <button class="btn btn-soft btn-sm" style="justify-self:start" onclick="addQ()">＋ Add question</button>
+    </div>
+    <div style="display:flex;gap:.6rem;margin-top:1.4rem">
+      <button class="btn btn-primary" id="saveCourseBtn" onclick="saveCourse()">Save course</button>
+      <button class="btn btn-soft" onclick="WC=null;closeModal()">Cancel</button>
+    </div>`);
+}
+function grabCourseFields(){
+  WC.title=val('ecTitle'); WC.cat=val('ecCat')||'General';
+  WC.passMark=parseInt(document.getElementById('ecPass').value)||80;
+  WC.mandatory=document.getElementById('ecMand').value==='1';
+}
+function addMod(){
+  const type=document.getElementById('ecNewType').value, title=val('ecNewTitle');
+  if(!title){toast('Give the module a title');return;}
+  grabCourseFields();
+  const md={dbId:null,type,title,dur:10,src:null,content:type==='text'?'<p>Lesson content coming soon.</p>':null,scenario:null};
+  WC.modules.push(md); renderCourseModal();
+}
+function rmMod(i){ grabCourseFields(); const md=WC.modules.splice(i,1)[0]; if(md.dbId)WC.delMods.push(md.dbId); renderCourseModal(); }
+function addQ(){
+  const q=val('ecQ'), opts=document.getElementById('ecOpts').value.split('|').map(s=>s.trim()).filter(Boolean);
+  if(!q||opts.length<2){toast('Add a question and at least 2 options');return;}
+  grabCourseFields(); WC.questions.push({dbId:null,q,opts,a:0,stem:'',fb:''}); renderCourseModal();
+}
+function rmQ(i){ grabCourseFields(); const q=WC.questions.splice(i,1)[0]; if(q.dbId)WC.delQs.push(q.dbId); renderCourseModal(); }
+async function uploadMedia(i,input){
+  const file=input.files[0]; if(!file)return;
+  const md=WC.modules[i];
+  toast('Uploading '+file.name+'…');
+  const path=`${WC.dbId}/${md.dbId}-${Date.now()}-${file.name.replace(/[^A-Za-z0-9_.-]/g,'_')}`;
+  const {error}=await sb.storage.from('lms-media').upload(path,file,{upsert:true});
+  if(error){toast('Upload failed: '+error.message);return;}
+  const {error:e2}=await sb.from('lms_modules').update({media_path:path}).eq('id',md.dbId);
+  if(e2){toast(e2.message);return;}
+  md.src=path;
+  const c=DB.courses.find(x=>x.id===WC.dbId);
+  if(c){const cm=c.modules.find(x=>x.id===md.dbId); if(cm)cm.src=path;}
+  grabCourseFields(); renderCourseModal(); toast('Media uploaded — live now ✓');
+}
+async function saveCourse(){
+  grabCourseFields();
+  if(!WC.title){toast('Course needs a title');return;}
+  const btn=document.getElementById('saveCourseBtn'); btn.disabled=true;
+  try{
+    let cid=WC.dbId;
+    if(cid){
+      const {error}=await sb.from('lms_courses').update({title:WC.title,category:WC.cat,pass_mark:WC.passMark,mandatory:WC.mandatory,version:WC.version+1}).eq('id',cid);
+      if(error)throw error;
+    }else{
+      const {data,error}=await sb.from('lms_courses').insert({title:WC.title,category:WC.cat,pass_mark:WC.passMark,mandatory:WC.mandatory,status:'draft'}).select('id').single();
+      if(error)throw error; cid=data.id;
+    }
+    if(WC.delMods.length){const {error}=await sb.from('lms_modules').delete().in('id',WC.delMods); if(error)throw error;}
+    if(WC.delQs.length){const {error}=await sb.from('lms_questions').delete().in('id',WC.delQs); if(error)throw error;}
+    for(let i=0;i<WC.modules.length;i++){ const md=WC.modules[i];
+      if(md.dbId){ const {error}=await sb.from('lms_modules').update({title:md.title,position:i}).eq('id',md.dbId); if(error)throw error; }
+      else{ const {error}=await sb.from('lms_modules').insert({course_id:cid,type:md.type,title:md.title,position:i,duration_min:md.dur||10,content:md.content,scenario:md.scenario}); if(error)throw error; }
+    }
+    for(let i=0;i<WC.questions.length;i++){ const q=WC.questions[i];
+      if(q.dbId){ const {error}=await sb.from('lms_questions').update({position:i}).eq('id',q.dbId); if(error)throw error; }
+      else{ const {error}=await sb.from('lms_questions').insert({course_id:cid,q:q.q,options:q.opts,correct:q.a,position:i,stem:q.stem||'',fb:q.fb||''}); if(error)throw error; }
+    }
+    WC=null; closeModal(); await loadData(); render(); toast('Course saved ✓');
+  }catch(err){ toast('Save failed: '+err.message); btn.disabled=false; }
+}
+
+/* =================== ADMIN: FEEDBACK INBOX =================== */
+function renderFeedback(m){
+  const items=DB.feedback;
+  m.innerHTML=`
+  <div class="pagehead"><div><h2>Feedback</h2><div class="sub">Curate learner feedback and feed it into quarterly course revisions</div></div>
+    <button class="btn btn-soft btn-sm" onclick="refreshData()">↻ Refresh</button></div>
+  ${items.length?'':'<div class="card" style="padding:2rem;text-align:center;color:var(--ink-soft)">No feedback yet. It appears here when learners complete a course.</div>'}
+  <div class="grid" style="grid-template-columns:1fr">
+    ${items.map(f=>{const u=DB.users.find(x=>x.uid===f.uid),c=DB.courses.find(x=>x.id===f.cid);
+      return `<div class="card" style="padding:1.1rem 1.3rem">
+      <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center">
+        <div><b>${esc(c?c.title:'Course')}</b> · <span style="color:var(--burgundy)">${'★'.repeat(f.rating)}${'☆'.repeat(5-f.rating)}</span><br>
+          <span style="color:var(--ink-soft);font-size:.8rem">${esc(u?u.name:'Former employee')} · ${new Date(f.date).toLocaleDateString('en-IE')}</span></div>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <span class="chip ${f.status==='new'?'chip-warn':f.status==='reviewed'?'chip-mut':'chip-ok'}">${f.status}</span>
+          ${f.status==='new'?`<button class="btn btn-soft btn-sm" onclick="fbStatus('${f.id}','reviewed')">Mark reviewed</button>`:''}
+          ${f.status!=='actioned'?`<button class="btn btn-primary btn-sm" onclick="fbAction('${f.id}')">Action → revise course</button>`:''}
+        </div></div>
+      ${f.comment?`<p style="margin-top:.7rem;font-size:.92rem;line-height:1.5">"${esc(f.comment)}"</p>`:''}
+      ${f.adminNote?`<div class="scn-feedback good" style="margin-top:.7rem">Revision note: ${esc(f.adminNote)}</div>`:''}
+      </div>`;}).join('')}
+  </div>`;
+}
+async function fbStatus(id,s){ const {error}=await sb.from('lms_feedback').update({status:s}).eq('id',id);
+  if(error){toast(error.message);return;}
+  DB.feedback.find(x=>x.id===id).status=s; render(); }
+function fbAction(id){
+  showModal(`<h3>Action feedback</h3>
+    <p style="color:var(--ink-soft);font-size:.88rem">Record what will change in the course. This bumps the course version so revisions are traceable per quarter.</p>
+    <label>Revision note</label><textarea id="fbNote" rows="3" placeholder="e.g. Re-record module 2 audio; add scenario on night visits…"></textarea>
+    <div style="display:flex;gap:.6rem;margin-top:1rem">
+      <button class="btn btn-primary" onclick="fbActionSave('${id}')">Save & bump version</button>
+      <button class="btn btn-soft" onclick="closeModal()">Cancel</button></div>`);
+}
+async function fbActionSave(id){
+  const f=DB.feedback.find(x=>x.id===id);
+  const note=document.getElementById('fbNote').value.trim();
+  const {error}=await sb.from('lms_feedback').update({status:'actioned',admin_note:note}).eq('id',id);
+  if(error){toast(error.message);return;}
+  f.adminNote=note; f.status='actioned';
+  const c=DB.courses.find(x=>x.id===f.cid);
+  if(c){ await sb.from('lms_courses').update({version:c.version+1}).eq('id',c.id); c.version++; }
+  closeModal(); render(); toast('Feedback actioned — course revised ✓');
+}
+
+/* =================== REPORTS & ACCREDITATION =================== */
+function renderReports(m){
+  const team=myTeam(), mand=mandatoryCourses();
+  const acc=team.filter(u=>isAccredited(u.uid)).length;
+  const attempts=DB.progress.flatMap(p=>p.attempts.filter(a=>quarterOf(a.date)===currentQuarter()));
+  const avg=attempts.length?Math.round(attempts.reduce((s,a)=>s+a.score,0)/attempts.length):0;
+  const fbCount=DB.feedback.length, fbNew=DB.feedback.filter(f=>f.status==='new').length;
+  m.innerHTML=`
+  <div class="pagehead"><div><h2>Reports & Accreditation</h2><div class="sub">${currentQuarter()} cycle · live organisation overview</div></div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn btn-soft btn-sm" onclick="refreshData()">↻ Refresh</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportTeamCSV()">⬇ Completion CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportAttemptsCSV()">⬇ Test attempts CSV</button>
+      <button class="btn btn-clay btn-sm" onclick="emailReport()">✉ Email quarterly report</button>
+    </div></div>
+  <div class="grid cols4" style="margin-bottom:1.4rem">
+    <div class="card stat"><div class="n">${team.length?Math.round(acc/team.length*100):0}%</div><div class="l">Staff accredited (${currentQuarter()})</div></div>
+    <div class="card stat"><div class="n">${avg}%</div><div class="l">Avg test score this quarter</div></div>
+    <div class="card stat"><div class="n">${attempts.length}</div><div class="l">Test attempts this quarter</div></div>
+    <div class="card stat"><div class="n">${fbCount}</div><div class="l">Feedback items (${fbNew} new)</div></div>
+  </div>
+  <div class="card tblwrap"><table>
+    <tr><th>Course</th><th>Status</th><th>Passed this quarter</th><th>Avg score</th><th>Version</th></tr>
+    ${DB.courses.map(c=>{
+      const passers=team.filter(u=>passedThisQuarter(u.uid,c)).length;
+      const catts=DB.progress.filter(p=>p.cid===c.id).flatMap(p=>p.attempts.filter(a=>quarterOf(a.date)===currentQuarter()));
+      const cavg=catts.length?Math.round(catts.reduce((s,a)=>s+a.score,0)/catts.length):'—';
+      return `<tr><td><b>${esc(c.title)}</b><br><span style="color:var(--ink-soft);font-size:.78rem">${esc(c.cat)}${c.mandatory?' · mandatory':''}</span></td>
+      <td><span class="chip ${c.status==='published'?'chip-ok':'chip-mut'}">${c.status}</span></td>
+      <td>${passers}/${team.length}</td><td>${cavg}${cavg==='—'?'':'%'}</td><td>v${c.version}</td></tr>`;}).join('')}
+  </table></div>`;
+}
+function exportAttemptsCSV(){
+  let rows=[['Date','Employee ID','Name','Course','Score %','Passed','Quarter']];
+  DB.progress.forEach(p=>{const u=DB.users.find(x=>x.uid===p.uid),c=DB.courses.find(x=>x.id===p.cid);
+    p.attempts.forEach(a=>rows.push([new Date(a.date).toLocaleString('en-IE'),u?u.id:'',u?u.name:'',c?c.title:'',a.score,a.passed?'YES':'NO',quarterOf(a.date)]));});
+  downloadCSV(rows,'LLH_test_attempts.csv');
+}
+
+/* =================== ADMIN: USERS =================== */
+function renderUsers(m){
+  m.innerHTML=`
+  <div class="pagehead"><div><h2>Users</h2><div class="sub">Logins are tied to Employee IDs · ${DB.users.length} accounts</div></div>
+    <button class="btn btn-primary btn-sm" onclick="editUser(null)">＋ Add employee</button></div>
+  <div class="card tblwrap"><table>
+    <tr><th>Employee ID</th><th>Name</th><th>Email</th><th>Role</th><th>Team</th><th>Manager</th><th></th></tr>
+    ${DB.users.map(u=>{const mg=DB.users.find(x=>x.id===u.managerId);
+      return `<tr><td><b>${esc(u.id)}</b></td><td>${esc(u.name)}</td><td style="font-size:.8rem">${esc(u.email)}</td>
+      <td><span class="chip ${u.role==='admin'?'chip-gold':u.role==='manager'?'chip-warn':'chip-mut'}">${u.role}</span></td>
+      <td>${esc(u.team)}</td><td>${mg?esc(mg.name):'—'}</td>
+      <td><button class="btn btn-soft btn-sm" onclick="editUser('${u.uid}')">✎</button></td></tr>`;}).join('')}
+  </table></div>`;
+}
+function editUser(uid){
+  const u=uid?DB.users.find(x=>x.uid===uid):{id:'',name:'',email:'',role:'staff',team:'',managerId:''};
+  const mgrs=DB.users.filter(x=>x.role!=='staff');
+  showModal(`<h3>${uid?'Edit employee':'Add employee'}</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem">
+      <div><label>Employee ID</label><input id="euId" value="${esc(u.id)}" ${uid?'disabled':''} placeholder="LLH-0007"></div>
+      <div><label>Full name</label><input id="euName" value="${esc(u.name)}"></div>
+      <div><label>Email</label><input id="euEmail" value="${esc(u.email)}"></div>
+      <div><label>Team</label><input id="euTeam" value="${esc(u.team)}"></div>
+      <div><label>Role</label><select id="euRole">${['staff','manager','admin'].map(r=>`<option ${u.role===r?'selected':''}>${r}</option>`).join('')}</select></div>
+      <div><label>Manager</label><select id="euMgr"><option value="">—</option>${mgrs.map(x=>`<option value="${esc(x.id)}" ${u.managerId===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
+      <div><label>${uid?'Reset password (blank = keep)':'Temporary password (min 8)'}</label><input id="euPw" placeholder="${uid?'••••••••':'e.g. Welcome2026!'}"></div>
+    </div>
+    <div class="err hidden" id="euErr"></div>
+    <div style="display:flex;gap:.6rem;margin-top:1.4rem">
+      <button class="btn btn-primary" id="euBtn" onclick="saveUser(${uid?`'${uid}'`:'null'})">Save</button>
+      <button class="btn btn-soft" onclick="closeModal()">Cancel</button></div>`);
+}
+async function saveUser(uid){
+  const btn=document.getElementById('euBtn'); btn.disabled=true;
+  const errEl=document.getElementById('euErr'); errEl.classList.add('hidden');
+  const pw=document.getElementById('euPw').value;
+  const body=uid
+    ?{action:'update_user',user_id:uid,name:val('euName'),email:val('euEmail'),team:val('euTeam'),
+      role:document.getElementById('euRole').value,manager_emp_id:document.getElementById('euMgr').value||null,
+      ...(pw?{password:pw}:{})}
+    :{action:'create_user',emp_id:val('euId'),name:val('euName'),email:val('euEmail'),team:val('euTeam'),
+      role:document.getElementById('euRole').value,manager_emp_id:document.getElementById('euMgr').value||null,password:pw};
+  try{
+    const {data,error}=await sb.functions.invoke('lms-admin',{body});
+    if(error) throw new Error((data&&data.error)||error.message||'Request failed');
+    if(data&&data.error) throw new Error(data.error);
+    closeModal(); await loadData(); render(); toast(uid?'Employee updated ✓':'Employee added — they can sign in now ✓');
+  }catch(err){ errEl.textContent=err.message; errEl.classList.remove('hidden'); btn.disabled=false; }
+}
+
+/* =================== INIT =================== */
+(async function(){
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(session){ await enterApp(); return; }
+  }catch(e){}
+  document.getElementById('logoLogin').innerHTML=logoHTML();
+  showLogin();
+})();
+</script>
+</body>
+</html>
