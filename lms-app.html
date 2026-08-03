@@ -561,10 +561,15 @@ function renderQuiz(c,p){
   const st=document.getElementById('stage'), qs=c.quiz.questions;
   if(PLAY.quizResult){
     const r=PLAY.quizResult;
-    const review=r.passed?'':qs.map((q,i)=>{
+    const wrong=qs.map((q,i)=>{
       if(PLAY.quizAns[i]===q.a)return '';
-      return `<div class="scn-feedback poor" style="text-align:left"><b>Q${i+1}:</b> ${esc(q.q)}<br><span style="font-size:.85rem">${esc(q.fb||'')}</span></div>`;
+      return `<div class="scn-feedback poor" style="text-align:left"><b>Q${i+1}:</b> ${esc(q.q)}
+        ${q.stem?`<br><span style="font-size:.82rem;color:var(--ink-soft)">${esc(q.stem)}</span>`:''}
+        <br><span style="font-size:.85rem">✗ <b>Your answer:</b> ${esc(q.opts[PLAY.quizAns[i]]??'(no answer)')}</span>
+        <br><span style="font-size:.85rem;color:var(--ok)">✓ <b>Correct answer:</b> ${esc(q.opts[q.a])}</span>
+        ${q.fb?`<br><span style="font-size:.85rem;margin-top:.3rem;display:inline-block">${esc(q.fb)}</span>`:''}</div>`;
     }).join('');
+    const review=wrong?`<div style="text-align:left;margin:.4rem 0 1rem"><h4 style="margin:.2rem 0 .6rem">Where you went wrong — and the right answers</h4>${wrong}</div>`:'';
     st.innerHTML=`<div class="scn-step" style="text-align:center;padding:1.6rem 1rem">
       <div style="font-size:3rem">${r.passed?'🏅':'📚'}</div>
       <h3 style="margin:.6rem 0">${r.passed?'Test passed!':'Not quite this time'}</h3>
