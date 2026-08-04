@@ -187,9 +187,9 @@ pre.email{white-space:pre-wrap;background:var(--paper);border-radius:10px;paddin
 .step-dot.done{color:var(--ever);background:var(--mint)}
 .step-dot.done:hover{background:var(--gold);color:#fff}
 .step-dot.current{color:#fff;background:var(--ever)}
-.mstage{animation:rise .45s ease both}
+.mstage{animation:rise .45s ease both;background:var(--mint)}
 .ltitle{font-family:var(--sdisp);font-weight:700;font-size:clamp(1.25rem,3vw,1.7rem);margin:.4rem 0 .9rem}
-.quiz-block{background:var(--paper);border:1.5px solid var(--line);border-radius:14px;padding:1.2rem 1.3rem;margin:1.4rem 0}
+.quiz-block{background:#FBFBF9;border:1.5px solid var(--line);border-radius:14px;padding:1.2rem 1.3rem;margin:1.4rem 0}
 .qtag{display:inline-block;font-weight:800;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:#fff;background:var(--burgundy);padding:4px 12px;border-radius:99px;margin-bottom:.6rem}
 .quiz-block .qq{font-weight:700;margin:.3rem 0 .7rem}
 .opt{display:block;width:100%;text-align:left;margin:.4rem 0;padding:.8rem 1rem;border-radius:10px;border:1.5px solid var(--line);background:#fff;font-size:.92rem;transition:border-color .15s,background .15s;cursor:pointer}
@@ -368,6 +368,7 @@ async function enterApp(){
   document.getElementById('appView').classList.remove('hidden');
   VIEW='home'; PLAY=null; setupRealtime(); renderShell();
 }
+
 function showLogin(){
   document.getElementById('loading').classList.add('hidden');
   document.getElementById('appView').classList.add('hidden');
