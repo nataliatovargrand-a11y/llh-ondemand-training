@@ -561,15 +561,10 @@ function renderQuiz(c,p){
   const st=document.getElementById('stage'), qs=c.quiz.questions;
   if(PLAY.quizResult){
     const r=PLAY.quizResult;
-    const wrong=qs.map((q,i)=>{
+    const review=r.passed?'':qs.map((q,i)=>{
       if(PLAY.quizAns[i]===q.a)return '';
-      return `<div class="scn-feedback poor" style="text-align:left"><b>Q${i+1}:</b> ${esc(q.q)}
-        ${q.stem?`<br><span style="font-size:.82rem;color:var(--ink-soft)">${esc(q.stem)}</span>`:''}
-        <br><span style="font-size:.85rem">✗ <b>Your answer:</b> ${esc(q.opts[PLAY.quizAns[i]]??'(no answer)')}</span>
-        <br><span style="font-size:.85rem;color:var(--ok)">✓ <b>Correct answer:</b> ${esc(q.opts[q.a])}</span>
-        ${q.fb?`<br><span style="font-size:.85rem;margin-top:.3rem;display:inline-block">${esc(q.fb)}</span>`:''}</div>`;
+      return `<div class="scn-feedback poor" style="text-align:left"><b>Q${i+1}:</b> ${esc(q.q)}<br><span style="font-size:.85rem">${esc(q.fb||'')}</span></div>`;
     }).join('');
-    const review=wrong?`<div style="text-align:left;margin:.4rem 0 1rem"><h4 style="margin:.2rem 0 .6rem">Where you went wrong — and the right answers</h4>${wrong}</div>`:'';
     st.innerHTML=`<div class="scn-step" style="text-align:center;padding:1.6rem 1rem">
       <div style="font-size:3rem">${r.passed?'🏅':'📚'}</div>
       <h3 style="margin:.6rem 0">${r.passed?'Test passed!':'Not quite this time'}</h3>
@@ -1009,7 +1004,7 @@ function viewCert(i){
   if(!w){toast('Allow pop-ups to view certificates');return;}
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
   <title>Certificate — ${esc(u.name)} — ${esc(ct.title)}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Quicksand:wght@400;500;600;700&family=La+Belle+Aurore&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Quicksand:wght@400;500;600;700&family=La+Belle+Aurore&display=swap" rel="stylesheet"><!-- cert fonts -->
   <style>
     @page{size:A4 landscape;margin:0}
     *{margin:0;padding:0;box-sizing:border-box}
@@ -1034,8 +1029,9 @@ function viewCert(i){
     .score{font-size:14px;font-weight:700;color:#722F38;margin-top:10px;letter-spacing:.06em;text-transform:uppercase}
     .sigrow{display:flex;justify-content:space-between;align-items:flex-end;margin:46px 60px 0}
     .sig{width:300px}
-    .sig .line{border-bottom:2px solid #16281F;height:52px}
+    .sig .line{border-bottom:2px solid #16281F;height:52px;display:flex;align-items:flex-end;justify-content:center}
     .sig .who{font-size:19px;font-weight:600;margin-top:10px}
+    .signame{font-family:'La Belle Aurore',cursive;font-size:36px;line-height:1;color:#1d2a22}
     .date{font-size:20px;font-weight:700;margin-top:26px}
     .printbtn{position:fixed;top:16px;right:16px;background:#33463A;color:#fff;border:0;border-radius:10px;
       padding:12px 20px;font-family:'Quicksand',sans-serif;font-weight:700;font-size:15px;cursor:pointer}
@@ -1055,9 +1051,9 @@ function viewCert(i){
     <div class="body3">${esc(included)}</div>
     <div class="score">Final assessment score: ${ct.score}% · ${ct.quarter}</div>
     <div class="sigrow">
-      <div class="sig"><div class="line"></div><div class="who">Director of Care</div></div>
+      <div class="sig"><div class="line"><span class="signame">Ana Lyons</span></div><div class="who">Clinical Lead</div></div>
       <div style="margin-bottom:-8px">${medal}</div>
-      <div class="sig"><div class="line"></div><div class="who">Trainer</div></div>
+      <div class="sig"><div class="line"><span class="signame">Laura Sousa</span></div><div class="who">Trainer</div></div>
     </div>
     <div class="date">${dstr}</div>
   </div></body></html>`);
