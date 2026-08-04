@@ -694,7 +694,7 @@ function renderQuiz(c,p){
     const today=new Date().toLocaleDateString('en-IE',{day:'numeric',month:'long',year:'numeric'});
     const cert=r.passed?`
       <div class="cert show" id="certBox">
-        <img class="cert-logo" src="liberty-living-logo.png" onerror="this.style.display='none'" alt="">
+        <img class="cert-logo" src="liberty-living-logo.png" onerror="if(!this.dataset.r){this.dataset.r=1;this.src='liberty-living-logo.png?r='+Date.now()}else{this.style.display='none'}" alt="">
         <p class="cert-kicker">Certificate of Achievement</p>
         <h3 class="cert-name">${esc(ME.name)}</h3>
         <p class="cert-line">has successfully completed the Liberty Living Homecare training course</p>
