@@ -1392,3 +1392,101 @@ async function saveUser(uid){
 </script>
 </body>
 </html>
+
+<script>
+/* ===== Sign-in reliability patch — 24 Aug 2026 =====
+   Adds self-service password reset, a safe two-field password change,
+   honest sign-in error messages, and clears dead sessions so a failed
+   token refresh can never trap someone on the sign-in screen.        */
+(function(){
+  function byId(i){ return document.getElementById(i); }
+
+  /* 1 — a dead/expired session must never leave people stranded */
+  try{
+    sb.auth.onAuthStateChange(function(ev){
+      if(ev==='SIGNED_OUT'){ try{ ME=null; }catch(e){} }
+    });
+  }catch(e){}
+
+  /* 2 — safe password change: confirm field + show-what-I-type */
+  window.openPw=function(){
+    showModal('<h3>Change password</h3>'
+      +'<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:.5rem">Pick something you will remember — you need it every time you sign in.</p>'
+      +'<label>New password (at least 8 characters)</label><input id="npw" type="password" autocomplete="new-password">'
+      +'<label>Type it again to confirm</label><input id="npw2" type="password" autocomplete="new-password">'
+      +'<label style="text-transform:none;letter-spacing:0;display:flex;align-items:center;gap:.45rem;margin-top:.7rem;font-weight:600">'
+      +'<input type="checkbox" style="width:auto" onchange="var t=this.checked?&quot;text&quot;:&quot;password&quot;;document.getElementById(&quot;npw&quot;).type=t;document.getElementById(&quot;npw2&quot;).type=t"> Show what I am typing</label>'
+      +'<div class="err hidden" id="pwErr"></div>'
+      +'<div style="display:flex;gap:.6rem;margin-top:1.2rem">'
+      +'<button class="btn btn-primary" onclick="savePw()">Update</button>'
+      +'<button class="btn btn-soft" onclick="closeModal()">Cancel</button></div>');
+  };
+  window.savePw=async function(){
+    var e=byId('pwErr'), a=byId('npw').value, b=byId('npw2').value;
+    function bad(m){ e.textContent=m; e.classList.remove('hidden'); }
+    e.classList.add('hidden');
+    if(a.length<8) return bad('Too short — please use at least 8 characters.');
+    if(a!==b) return bad('Those two do not match. Please type them again.');
+    var r=await sb.auth.updateUser({password:a});
+    if(r.error) return bad(r.error.message);
+    closeModal(); toast('Password updated ✓ — use it next time you sign in');
+  };
+
+  /* 3 — resolve an Employee ID tolerantly (spaces, no prefix, lower case) */
+  async function emailFor(raw){
+    var id=(raw||'').trim().replace(/\s+/g,'');
+    if(!id) return {err:'Please type your Employee ID first.'};
+    if(id.indexOf('@')>-1) return {email:id};
+    if(/^[0-9]+$/.test(id)) id='LLH-'+id;
+    var q=await sb.rpc('lms_email_for_emp',{p_emp_id:id.toUpperCase()});
+    if(q.error||!q.data) return {err:'We do not recognise that Employee ID. It looks like LLH-1234 — check your welcome email.'};
+    return {email:q.data};
+  }
+
+  /* 4 — sign in, with errors that say what actually went wrong */
+  window.doLogin=async function(ev){
+    if(ev&&ev.preventDefault) ev.preventDefault();
+    var btn=byId('loginBtn'), err=byId('loginErr');
+    btn.disabled=true; err.classList.add('hidden');
+    function fail(m){ err.textContent=m; err.classList.remove('hidden'); btn.disabled=false; return false; }
+    var r;
+    try{ r=await emailFor(byId('loginId').value); }
+    catch(x){ return fail('No internet connection — please try again.'); }
+    if(r.err) return fail(r.err);
+    var s;
+    try{ s=await sb.auth.signInWithPassword({email:r.email,password:byId('loginPw').value}); }
+    catch(x){ return fail('No internet connection — please try again.'); }
+    if(s.error) return fail('That password is not right. Tap “Forgotten your password?” below and we will email you a link.');
+    try{ await enterApp(); }
+    catch(x){ return fail('You are signed in, but your training would not load. Please tap Sign in once more.'); }
+    btn.disabled=false; return false;
+  };
+
+  /* 5 — self-service reset: the missing way back in */
+  window.doReset=async function(){
+    var err=byId('loginErr');
+    var r=await emailFor(byId('loginId').value);
+    if(r.err){ err.textContent=r.err; err.classList.remove('hidden'); return; }
+    err.classList.add('hidden');
+    await sb.auth.resetPasswordForEmail(r.email,{redirectTo:location.href.split('#')[0]});
+    showModal('<h3>Check your email</h3>'
+      +'<p style="line-height:1.65">We have sent a link to <b>'+esc(r.email)+'</b>.</p>'
+      +'<p style="line-height:1.65">Open it on this phone. It brings you straight into the Learning Hub, then you can set a new password from <b>Change password</b> in the menu.</p>'
+      +'<p style="color:var(--ink-soft);font-size:.85rem">It can take a few minutes to arrive — please check your junk folder too.</p>'
+      +'<div style="margin-top:1rem"><button class="btn btn-primary" onclick="closeModal()">OK</button></div>');
+  };
+
+  /* 6 — replace the first-time-setup link (staff kept tapping it) */
+  function fixLink(){
+    var el=document.querySelector('.setup-link');
+    if(el) el.innerHTML='<a onclick="doReset()">Forgotten your password?</a>';
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',fixLink);
+  else fixLink();
+
+  /* 7 — arriving from a reset link: tell them what to do next */
+  if(location.hash.indexOf('type=recovery')>-1){
+    setTimeout(function(){ toast('Signed in — now set a new password from “Change password”'); },1800);
+  }
+})();
+</script>
