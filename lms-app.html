@@ -277,7 +277,7 @@ const SB_URL='https://gpaegnvcpygrfeillahn.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwYWVnbnZjcHlncmZlaWxsYWhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTA1MzAsImV4cCI6MjEwMDEyNjUzMH0.DN94N5_OxOpGCmIWlPPBq5VadhIjmJAZcC9id2-JZlA';
 const sb=window.supabase.createClient(SB_URL,SB_KEY);
 
-let DB={users:[],courses:[],progress:[],feedback:[],certs:[]};
+let DB={users:[],courses:[],progress:[],feedback:[],certs:[],field:[]};
 let ME=null, VIEW='home', PLAY=null, RT=null, _rtT=null, SEL_UID=null;
 
 function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
@@ -317,6 +317,36 @@ async function loadData(){
   DB.feedback=(fb.data||[]).map(f=>({id:f.id,uid:f.user_id,cid:f.course_id,rating:f.rating,comment:f.comment,date:f.created_at,status:f.status,adminNote:f.admin_note}));
   try{ const certs=await sb.from('completions').select('*').order('created_at',{ascending:false});
     DB.certs=certs.error?[]:(certs.data||[]); }catch(e){ DB.certs=[]; }
+  DB.field=buildFieldFeed(atts.data||[],courses.data||[],emps.data||[],DB.certs);
+}
+/* Field Training feed: every course in one list.
+   LMS knowledge test passes and fails, plus the standalone module records that
+   were never migrated into the LMS (old accounts, office staff, ex staff). */
+function slugify(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+function dayKey(d){ const x=new Date(d); return isNaN(x)?'':x.toISOString().slice(0,10); }
+function buildFieldFeed(atts,courses,emps,legacy){
+  const uById={}; emps.forEach(e=>{uById[e.user_id]=e;});
+  const cById={}; courses.forEach(c=>{cById[c.id]=c;});
+  const lms=atts.map(a=>{
+    const u=uById[a.user_id], c=cById[a.course_id];
+    if(!u||!c) return null;
+    return {id:'q:'+a.id,full_name:u.name,email:u.email,module_slug:slugify(c.title),module_title:c.title,
+            score:a.score,passed:a.passed,created_at:a.created_at,cert_sent_at:null,source:'LMS knowledge test'};
+  }).filter(Boolean);
+  // A legacy record counts as already in the LMS when the same course, score and day
+  // shows up against the same email or the same name (the August migration moved some
+  // people across under a different address).
+  const seen={};
+  lms.forEach(r=>{ const k=r.module_slug+'|'+r.score+'|'+dayKey(r.created_at);
+    seen[k+'|e:'+String(r.email||'').toLowerCase()]=1;
+    seen[k+'|n:'+String(r.full_name||'').trim().toLowerCase()]=1; });
+  const only=(legacy||[]).filter(r=>{
+    const k=slugify(r.module_title)+'|'+r.score+'|'+dayKey(r.created_at);
+    return !seen[k+'|e:'+String(r.email||'').toLowerCase()] && !seen[k+'|n:'+String(r.full_name||'').trim().toLowerCase()];
+  }).map(r=>({id:'c:'+r.id,full_name:r.full_name,email:r.email,module_slug:slugify(r.module_title),
+              module_title:r.module_title,score:r.score,passed:r.passed,created_at:r.created_at,
+              cert_sent_at:r.cert_sent_at,source:'Training module'}));
+  return lms.concat(only).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
 }
 
 /* =================== QUARTERS / ACCREDITATION =================== */
@@ -444,24 +474,39 @@ function render(){
 
 const MED_ROLLOUT=["oladotunkehinde777@gmail.com", "oompabanga@gmail.com", "akhonadube244@gmail.com", "adriana.lcardozo@hotmail.com", "adrianocruz.nunes@gmail.com", "ailbhe.cahill@gmail.com", "ajaychanofficialmail@gmail.com", "alessandro.ireland@gmail.com", "alexandrepnutri@outlook.com", "alisoncarroll71@gmail.com", "awilamina655@gmail.com", "aminanaikandish@gmail.com", "aimeerobinson555@icloud.com", "anetakomendera@gmail.com", "ange1509@hotmail.com", "cangelinah@yahoo.com", "Aoife.spain1@gmail.com", "ashlingkelly92@gmail.com", "lenihanaudrey40@gmail.com", "btsengel922@gmail.com", "bernadettejohnsonty@gmail.com", "elizabethwalker2012@gmail.com", "babby.5552@gmail.com", "sukhbayarbolor@yahoo.com", "bridgetf2020@hotmail.com", "brightkolawole779@gmail.com", "arieldellalibera@gmail.com", "brn.grombowiski@gmail.com", "mendesazx3@gmail.com", "caitlinmurdock7@gmail.com", "cammyshortall12@gmail.com", "carolinequigley113@yahoo.ie", "derannaeto.bzl@gmail.com", "claire.cullen51@gmail.com", "clairerleavy@gmail.com", "cristian.elesbao@hotmail.com", "davethedub69@gmail.com", "dlawlor@live.ie", "denisefenlon.78@gmail.com", "derinarogundade13@gmail.com", "etinosadesmond7@gmail.com", "doricahmurefu18@gmail.com", "ntshabeledorothy@gmail.com", "dylleynekryss@gmail.com", "jc.janecavalcante@outlook.com", "eileentullamore2024@gmail.com", "enyadaly15@gmail.com", "evanoyce@gmail.com", "evezyk209@gmail.com", "fionnualaward2020@gmail.com", "gabriella.loczi@gmail.com", "gabrielleherreira@estudante.ufscar.br", "gabsjordan@gmail.com", "garima421988@gmail.com", "geovanne_lima@icloud.com", "gercampbell7@gmail.com", "gerardoleorireland@gmail.com", "gratefulnkencho90@gmail.com", "hadassafelix@hotmail.com", "hugolpassos@icloud.com", "imelda.molloy69@gmail.com", "irene.b@libertyhomecare.ie", "irenedolan71@gmail.com", "isabelleventura407@gmail.com", "jackiekelly079@gmail.com", "jackie@libertyhomecare.ie", "sjeniffer501@gmail.com", "joanphelan20@gmail.com", "joaocarlosnegromonte@gmail.com", "joaozynhobarboza@gmail.com", "joeleen85@gmail.com", "karenmc@libertyhomecare.ie", "katleenhoulihan@gmail.com", "kathlynt399@gmail.com", "katiedunne7@outlook.ie", "adamson.kevz@gmail.com", "Kieracarroll26@gmail.com", "lararodriguesdamasceno19@gmail.com", "latoyaryan@hotmail.com", "laura.santos.sousa18@gmail.com", "lawrenie@libertyhomecare.ie", "leahobrien818@gmail.com", "leodp23@gmail.com", "lborovets2@gmail.com", "lindakinsella@ymail.com", "bankslisa34@gmail.com", "lisa@libertyhomecare.ie", "lizziemhango@yahoo.com", "ltmmops@gmail.com", "lucasgois2021@icloud.com", "koredeonline@gmail.com", "lynseyjamie@gmail.com", "kolawolemabel8@gmail.com", "mbangura1992@gmail.com", "manoelsilvavitorino7@gmail.com", "merygramajo93@gmail.com", "marianabettini09@gmail.com", "mharty167@gmail.com", "tierneym307@gmail.com", "martinazambra@gmail.com", "nmarufbek3162@gmail.com", "sibandamarvellous92@gmail.com", "maryjames.221@hotmail.com", "matheusnune2001@gmail.com", "bonolomtshwenyego@yahoo.co.uk", "jinumayuga@gmail.com", "redanulrafi@gmail.com", "mgha5534@gmail.com", "mikeytpking@gmail.com", "mm15061981@gmail.com", "iamarafat73@gmail.com", "molliepigott23@gmail.com", "ssmuthukumar12@gmail.com", "nadia2014mota@gmail.com", "nalini.p2007@gmail.com", "tasha.egan@gmail.com", "ncubeneedie27@gmail.com", "niamhfarrell3@gmail.com", "nicolelacey_xo@outlook.com", "tosinfolarin1@gmail.com", "pkilano@yahoo.com", "mello.queila@icloud.com", "glynnrachel285@gmail.com", "raphatams@yahoo.com", "beckypardy12@hotmail.com", "keoghrhianna@gmail.com", "rosangelasantos188@gmail.com", "sabeenbabar@gmail.com", "mohamedsadiya343@gmail.com", "sarahkeogh1997@outlook.ie", "sarahlaurenreynolds@gmail.com", "shannon.mcjames@gmail.com", "shannonfla2k15@gmail.com", "shannon@libertyhomecare.ie", "sharonguinan@hotmail.com", "shaunafla23@gmail.com", "shereetierney@gmail.com", "eva0005116@gmail.com", "shirleysmh25a@gmail.com", "sihlemkandle@gmail.com", "sophiejames221@outlook.com", "suzanneelliott88@gmail.com", "oladotuntaiwo19@gmail.com", "tconroy083@gmail.com", "tassofcarvalhoverbo@gmail.com", "thaianicaroline@yahoo.com.br", "ta.gavioes.lima@hotmail.com", "thaissouzacreci@gmail.com", "thett8136@gmail.com", "alabi.timothy22@gmail.com", "handtommy81@gmail.com", "traceywynne22@gmail.com", "ursulapolinyane@gmail.com", "vaishnavidabholkar2@gmail.com", "vickyokhuaherobo@gmail.com", "wen.gironmartinez@gmail.com", "wnicacio1599@gmail.com", "hiratawilliam1@gmail.com", "qikott@gmail.com", "hafidbenrekia@yahoo.com", "ursuladavisfischer84@gmail.com", "janesamueluredo@gmail.com", "yosufimalikka@gmail.com", "danicapineda1@gmail.com"];
 let FT={mod:'medication-awareness',q:''};
+function ftRollouts(){
+  // Named rollout lists, keyed by course. The catheter list is the 141 staff and
+  // manager accounts the 25 August campaign went to, rebuilt live from the roster.
+  return {
+    'medication-awareness':{list:MED_ROLLOUT,deadline:'Monday, 10 August'},
+    'catheter-bag-care':{list:(DB.users||[]).filter(u=>u.role!=='admin').map(u=>u.email),deadline:'Monday, 8 September'}
+  };
+}
 function renderFieldTraining(m){
-  const all=DB.certs||[];
+  const all=DB.field||[];
   const mods={}; all.forEach(r=>{mods[r.module_slug]=r.module_title;});
-  if(!mods[FT.mod]) FT.mod=Object.keys(mods)[0]||'';
+  // Dropdown order follows the course library (category then title), anything left over goes last
+  const order=[];
+  (DB.courses||[]).slice().sort((a,b)=>(a.cat+'|'+a.title).localeCompare(b.cat+'|'+b.title))
+    .forEach(c=>{const s=slugify(c.title); if(mods[s]&&order.indexOf(s)<0) order.push(s);});
+  Object.keys(mods).forEach(s=>{ if(order.indexOf(s)<0) order.push(s); });
+  if(FT.mod&&!mods[FT.mod]) FT.mod=order[0]||'';
   const data=all.filter(r=>(!FT.mod||r.module_slug===FT.mod)&&(!FT.q||(r.full_name+' '+r.email).toLowerCase().includes(FT.q.toLowerCase())));
   const passes=data.filter(r=>r.passed);
-  const uniq={}; passes.forEach(r=>{const k=r.email.toLowerCase(); if(!uniq[k]||r.score>uniq[k].score)uniq[k]=r;});
+  const uniq={}; passes.forEach(r=>{const k=String(r.email||r.full_name||'').toLowerCase()+(FT.mod?'':'|'+r.module_slug); if(!uniq[k]||r.score>uniq[k].score)uniq[k]=r;});
   const certified=Object.keys(uniq).length;
   const avg=passes.length?Math.round(passes.reduce((n,r)=>n+r.score,0)/passes.length):0;
   const now=new Date(); const month=data.filter(r=>{const d=new Date(r.created_at);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();}).length;
   let tracker='';
-  if(FT.mod==='medication-awareness'){
-    const done={}; all.forEach(r=>{ if(r.passed&&r.module_slug==='medication-awareness') done[r.email.toLowerCase()]=1; });
-    const outstanding=MED_ROLLOUT.filter(e=>!done[e.toLowerCase()]);
-    const pct=Math.round((MED_ROLLOUT.length-outstanding.length)/MED_ROLLOUT.length*100);
+  const roll=ftRollouts()[FT.mod];
+  if(roll&&roll.list.length){
+    const done={}; all.forEach(r=>{ if(r.passed&&r.module_slug===FT.mod&&r.email) done[r.email.toLowerCase()]=1; });
+    const seenR={}; const list=roll.list.filter(e=>{const k=String(e||'').toLowerCase(); if(!k||seenR[k])return false; seenR[k]=1; return true;});
+    const outstanding=list.filter(e=>!done[e.toLowerCase()]);
+    const pct=Math.round((list.length-outstanding.length)/list.length*100);
     tracker=`<div class="card" style="padding:1.2rem 1.4rem;margin-bottom:1.2rem">
-      <h3 style="margin:0 0 .5rem">Rollout tracker — Medication Awareness</h3>
-      <div class="sub" style="margin-bottom:.6rem"><b>${MED_ROLLOUT.length-outstanding.length} of ${MED_ROLLOUT.length}</b> staff on the rollout list have passed (${pct}%) · deadline Monday, 10 August</div>
+      <h3 style="margin:0 0 .5rem">Rollout tracker — ${esc(mods[FT.mod])}</h3>
+      <div class="sub" style="margin-bottom:.6rem"><b>${list.length-outstanding.length} of ${list.length}</b> staff on the rollout list have passed (${pct}%) · deadline ${esc(roll.deadline)}</div>
       <div style="height:10px;background:var(--paper);border-radius:99px;overflow:hidden;margin-bottom:.8rem"><span style="display:block;height:100%;width:${pct}%;background:linear-gradient(90deg,var(--ever),var(--gold))"></span></div>
       ${outstanding.length?`<details><summary style="cursor:pointer;font-weight:700;font-size:.88rem;color:var(--burgundy)">Outstanding (${outstanding.length}) — click to view</summary>
         <div style="font-size:.8rem;line-height:1.7;margin-top:.5rem;user-select:all;color:var(--ink-soft)">${outstanding.map(esc).join('<br>')}</div></details>`
@@ -471,7 +516,7 @@ function renderFieldTraining(m){
   m.innerHTML=`
   <div class="pagehead"><div><h2>Field Training</h2><div class="sub">On-demand module completions, certificates and rollout tracking — field staff and office, in one place.</div></div></div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.8rem;margin-bottom:1.2rem">
-    <div class="card stat"><div class="n">${certified}</div><div class="l">Staff certified</div></div>
+    <div class="card stat"><div class="n">${certified}</div><div class="l">${FT.mod?'Staff certified':'Certificates earned'}</div></div>
     <div class="card stat"><div class="n">${data.length}</div><div class="l">Total attempts</div></div>
     <div class="card stat"><div class="n">${passes.length?avg+'%':'–'}</div><div class="l">Average pass score</div></div>
     <div class="card stat"><div class="n">${month}</div><div class="l">This month</div></div>
@@ -479,31 +524,34 @@ function renderFieldTraining(m){
   ${tracker}
   <div class="card" style="padding:1.2rem 1.4rem">
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:.8rem">
-      <select style="max-width:260px" onchange="FT.mod=this.value;render()">${Object.keys(mods).map(s=>`<option value="${esc(s)}" ${FT.mod===s?'selected':''}>${esc(mods[s])}</option>`).join('')}</select>
+      <select style="max-width:300px" onchange="FT.mod=this.value;render()">
+        <option value="" ${FT.mod===''?'selected':''}>All courses (${all.length})</option>
+        ${order.map(s=>`<option value="${esc(s)}" ${FT.mod===s?'selected':''}>${esc(mods[s])}</option>`).join('')}</select>
       <input type="search" placeholder="Search name or email…" style="max-width:260px" value="${esc(FT.q)}" oninput="FT.q=this.value;render()">
       <button class="btn btn-soft btn-sm" onclick="ftCsv()">⬇ Export CSV</button>
     </div>
     <div style="overflow-x:auto"><table class="tbl" style="width:100%;font-size:.88rem">
-      <tr><th style="text-align:left">Name</th><th style="text-align:left">Email</th><th>Score</th><th>Result</th><th style="text-align:left">Date</th><th></th></tr>
+      <tr><th style="text-align:left">Name</th><th style="text-align:left">Email</th>${FT.mod?'':'<th style="text-align:left">Course</th>'}<th>Score</th><th>Result</th><th style="text-align:left">Date</th><th></th></tr>
       ${data.map((r,i)=>`<tr>
         <td><b>${esc(r.full_name)}</b></td><td>${esc(r.email)}</td>
+        ${FT.mod?'':`<td>${esc(r.module_title)}</td>`}
         <td style="text-align:center">${r.score}%</td>
         <td style="text-align:center"><span class="chip ${r.passed?'chip-ok':'chip-bad'}">${r.passed?'Pass':'Fail'}</span></td>
         <td>${new Date(r.created_at).toLocaleDateString('en-IE',{day:'numeric',month:'short',year:'numeric'})}</td>
         <td>${r.passed?`<button class="btn btn-soft btn-sm" onclick="viewFieldCert('${esc(r.id)}')">📜 View certificate</button>`:''}</td>
-      </tr>`).join('')||'<tr><td colspan="6" style="color:var(--ink-soft)">No records yet.</td></tr>'}
+      </tr>`).join('')||`<tr><td colspan="${FT.mod?6:7}" style="color:var(--ink-soft)">No records yet.</td></tr>`}
     </table></div>
   </div>`;
 }
 function ftCsv(){
-  const rows=(DB.certs||[]).filter(r=>!FT.mod||r.module_slug===FT.mod);
-  const csv=[['Name','Email','Module','Score','Result','Date'],...rows.map(r=>[r.full_name,r.email,r.module_title,r.score+'%',r.passed?'Pass':'Fail',new Date(r.created_at).toISOString().slice(0,10)])]
+  const rows=(DB.field||[]).filter(r=>!FT.mod||r.module_slug===FT.mod);
+  const csv=[['Name','Email','Course','Score','Result','Date','Source'],...rows.map(r=>[r.full_name,r.email,r.module_title,r.score+'%',r.passed?'Pass':'Fail',new Date(r.created_at).toISOString().slice(0,10),r.source||''])]
     .map(a=>a.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
   const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
   a.download='field-training-completions.csv'; a.click();
 }
 function viewFieldCert(id){
-  const r=(DB.certs||[]).find(x=>String(x.id)===String(id)); if(!r) return;
+  const r=(DB.field||[]).find(x=>String(x.id)===String(id)); if(!r) return;
   const d=new Date(r.created_at).toLocaleDateString('en-IE',{day:'numeric',month:'long',year:'numeric'});
   const w=window.open('','_blank','width=900,height=650');
   if(!w){toast('Allow pop-ups to view certificates');return;}
@@ -524,7 +572,7 @@ function viewFieldCert(id){
    <h3>${esc(r.full_name)}</h3>
    <p>has completed the Liberty Living Homecare mandatory training module</p>
    <p class="course">${esc(r.module_title)}</p>
-   <p>Score: <strong>${r.score}%</strong> (pass mark 80%) · Date: <strong>${d}</strong></p>
+   <p>Score: <strong>${r.score}%</strong> (pass mark ${((DB.courses||[]).find(c=>slugify(c.title)===r.module_slug)||{}).passMark||80}%) · Date: <strong>${d}</strong></p>
    <div style="font-size:34px;margin:8px 0">🏅</div>
    <div class="sigs"><div><img src="${SIG_ANA}" alt="Ana Lyons" style="height:40px;display:block;margin:0 auto 2px"><span></span>Ana Lyons · Clinical Lead</div><div><img src="${SIG_LAURA}" alt="Laura Sousa" style="height:40px;display:block;margin:0 auto 2px"><span></span>Laura Sousa · Trainer</div></div>
    <button class="btnp" onclick="window.print()">🖨 Print / save as PDF</button>
