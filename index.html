@@ -17,6 +17,11 @@
     <p>Opening the Liberty Living Homecare Learning Hub.</p>
     <p><a href="lms-app.html">Continue to the Learning Hub</a></p>
   </div>
-  <script>location.replace('lms-app.html');</script>
+  <script>
+    // Carry any query string and hash through to the app. Supabase auth links
+    // return tokens in the hash, so dropping it would break a sign in or reset
+    // that ever lands on the bare domain.
+    location.replace('lms-app.html' + location.search + location.hash);
+  </script>
 </body>
 </html>
