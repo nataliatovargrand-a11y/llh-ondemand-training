@@ -1037,12 +1037,12 @@ async function togglePublish(cid){ const c=DB.courses.find(x=>x.id===cid);
 }
 function editCourse(cid){
   if(cid){ const c=DB.courses.find(x=>x.id===cid);
-    WC={dbId:cid,title:c.title,cat:c.cat,passMark:c.passMark,mandatory:c.mandatory,version:c.version,
+    WC={dbId:cid,title:c.title,cat:c.cat,passMark:c.passMark,mandatory:c.mandatory,version:c.version,bump:false,
       modules:c.modules.map(md=>({...md,dbId:md.id})),
       questions:c.quiz.questions.map(q=>({...q,dbId:q.id})),
       delMods:[],delQs:[]};
   } else if(!WC||WC.dbId!==null){
-    WC={dbId:null,title:'',cat:'General',passMark:80,mandatory:false,version:1,modules:[],questions:[],delMods:[],delQs:[]};
+    WC={dbId:null,title:'',cat:'General',passMark:80,mandatory:false,version:1,bump:false,modules:[],questions:[],delMods:[],delQs:[]};
   }
   renderCourseModal();
 }
@@ -1058,6 +1058,8 @@ function renderCourseModal(){
     <label>Modules</label>
     <div>${c.modules.map((md,i)=>`<div class="uprow">
       <span>${{video:'🎬',audio:'🎧',scenario:'🧭',text:'📖'}[md.type]}</span><b style="flex:1">${esc(md.title)}</b>
+      <span style="font-size:.72rem;color:var(--ink-soft)">${md.dur||10} min${md.type==='text'?` · ${(md.qc||[]).length} quick ${(md.qc||[]).length===1?'check':'checks'}`:''}</span>
+      <button class="btn btn-soft btn-sm" onclick="editMod(${i})">✎ Edit</button>
       ${(md.type==='video'||md.type==='audio')&&md.dbId?`
         <span style="font-size:.75rem;color:var(--ink-soft)">${md.src?'🎞 media attached':'no media'}</span>
         <button class="btn btn-soft btn-sm" onclick="document.getElementById('up${i}').click()">⬆ Upload</button>
@@ -1069,14 +1071,19 @@ function renderCourseModal(){
       <button class="btn btn-soft btn-sm" onclick="addMod()">＋ Add</button>
     </div>
     <label>Test questions (${c.questions.length})</label>
-    <div style="color:var(--ink-soft);font-size:.83rem">${c.questions.map((q,i)=>`<div class="uprow">${i+1}. <span style="flex:1">${esc(q.q.slice(0,70))}${q.q.length>70?'…':''}</span><button class="btn btn-soft btn-sm" onclick="rmQ(${i})">✕</button></div>`).join('')||'None yet.'}</div>
+    <div style="color:var(--ink-soft);font-size:.83rem">${c.questions.map((q,i)=>`<div class="uprow">${i+1}. <span style="flex:1">${esc(q.q.slice(0,70))}${q.q.length>70?'…':''}</span><button class="btn btn-soft btn-sm" onclick="editQ(${i})">✎</button><button class="btn btn-soft btn-sm" onclick="rmQ(${i})">✕</button></div>`).join('')||'None yet.'}</div>
     <div style="display:grid;gap:.4rem;margin-top:.5rem">
       <input id="ecQ" placeholder="New question…">
       <input id="ecOpts" placeholder="Options separated by | (first one = correct answer)">
       <button class="btn btn-soft btn-sm" style="justify-self:start" onclick="addQ()">＋ Add question</button>
     </div>
-    <div style="display:flex;gap:.6rem;margin-top:1.4rem">
+    ${c.dbId?`<label style="display:flex;align-items:center;gap:.5rem;text-transform:none;letter-spacing:0;margin-top:1rem">
+      <input type="checkbox" id="ecBump" style="width:auto" ${c.bump?'checked':''}>
+      <span style="font-weight:500">Count this as a new version of the course</span></label>
+    <div style="font-size:.78rem;color:var(--ink-soft);margin-top:.2rem">Leave unticked for typos and wording. Tick it when the learning or the test has actually changed.</div>`:''}
+    <div style="display:flex;gap:.6rem;margin-top:1.4rem;flex-wrap:wrap">
       <button class="btn btn-primary" id="saveCourseBtn" onclick="saveCourse()">Save course</button>
+      <button class="btn btn-ghost" onclick="saveAndPreview()">Save and preview as a learner</button>
       <button class="btn btn-soft" onclick="WC=null;closeModal()">Cancel</button>
     </div>`);
 }
@@ -1084,12 +1091,96 @@ function grabCourseFields(){
   WC.title=val('ecTitle'); WC.cat=val('ecCat')||'General';
   WC.passMark=parseInt(document.getElementById('ecPass').value)||80;
   WC.mandatory=document.getElementById('ecMand').value==='1';
+  const b=document.getElementById('ecBump'); if(b) WC.bump=b.checked;
+}
+
+/* ---------- MODULE EDITOR: lesson content and quick checks ---------- */
+function editMod(i){ grabCourseFields(); renderModEditor(i); }
+function grabModFields(i){
+  const md=WC.modules[i];
+  const t=document.getElementById('emTitle'); if(t) md.title=t.value.trim();
+  const d=document.getElementById('emDur'); if(d) md.dur=parseInt(d.value)||10;
+  const c=document.getElementById('emContent'); if(c) md.content=c.value;
+}
+function renderModEditor(i){
+  const md=WC.modules[i];
+  showModal(`<h3>Module ${i+1} of ${WC.modules.length}</h3>
+    <label>Title</label><input id="emTitle" value="${esc(md.title)}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem">
+      <div><label>Type</label><input value="${md.type}" disabled></div>
+      <div><label>Minutes to complete</label><input id="emDur" type="number" min="1" max="180" value="${md.dur||10}"></div>
+    </div>
+    ${md.type==='text'?`<label>Lesson content</label>
+    <div style="font-size:.78rem;color:var(--ink-soft);margin-bottom:.3rem">Written as HTML. Use &lt;p&gt; for paragraphs and &lt;p class="objective"&gt; for the opening line.</div>
+    <textarea id="emContent" rows="16" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.78rem;line-height:1.5">${esc(md.content||'')}</textarea>`:''}
+    <label>Quick checks (${(md.qc||[]).length})</label>
+    <div>${(md.qc||[]).map((q,j)=>`<div class="uprow"><span style="flex:1">${esc(String(q.q||'').slice(0,64))}</span>
+      <button class="btn btn-soft btn-sm" onclick="rmQC(${i},${j})">✕</button></div>`).join('')||'<div style="color:var(--ink-soft);font-size:.85rem">None yet.</div>'}</div>
+    <div style="display:grid;gap:.4rem;margin-top:.5rem">
+      <input id="emQcQ" placeholder="Quick check question">
+      <input id="emQcOpts" placeholder="Options separated by | (the first one is the correct answer)">
+      <input id="emQcGood" placeholder="What they see when they get it right">
+      <input id="emQcBad" placeholder="What they see when they get it wrong">
+      <button class="btn btn-soft btn-sm" style="justify-self:start" onclick="addQC(${i})">＋ Add quick check</button>
+    </div>
+    <div style="display:flex;gap:.6rem;margin-top:1.4rem">
+      <button class="btn btn-primary" onclick="grabModFields(${i});renderCourseModal()">Done</button>
+      <button class="btn btn-soft" onclick="renderCourseModal()">Back without keeping changes</button>
+    </div>`);
+}
+function addQC(i){
+  grabModFields(i);
+  const md=WC.modules[i];
+  const q=val('emQcQ');
+  const opts=document.getElementById('emQcOpts').value.split('|').map(s=>s.trim()).filter(Boolean);
+  if(!q||opts.length<2){toast('Add a question and at least 2 options');return;}
+  md.qc=md.qc||[];
+  md.qc.push({q,opts,a:0,good:val('emQcGood')||'Correct.',bad:val('emQcBad')||'Not quite, read that section again.'});
+  renderModEditor(i);
+}
+function rmQC(i,j){ grabModFields(i); WC.modules[i].qc.splice(j,1); renderModEditor(i); }
+
+/* ---------- QUESTION EDITOR: edit an existing test question ---------- */
+function editQ(i){ grabCourseFields(); renderQEditor(i); }
+function renderQEditor(i){
+  const q=WC.questions[i];
+  showModal(`<h3>Test question ${i+1}</h3>
+    <label>Question</label><textarea id="eqQ" rows="2">${esc(q.q||'')}</textarea>
+    <label>Options, one per line</label>
+    <textarea id="eqOpts" rows="4">${esc((q.opts||[]).join('\n'))}</textarea>
+    <label>Which line is the correct answer</label><input id="eqA" type="number" min="1" value="${(q.a||0)+1}">
+    <label>Lead in shown above the question (optional)</label><input id="eqStem" value="${esc(q.stem||'')}">
+    <label>Feedback after answering (optional)</label><textarea id="eqFb" rows="2">${esc(q.fb||'')}</textarea>
+    <div style="display:flex;gap:.6rem;margin-top:1.4rem">
+      <button class="btn btn-primary" onclick="saveQEditor(${i})">Done</button>
+      <button class="btn btn-soft" onclick="renderCourseModal()">Back without keeping changes</button>
+    </div>`);
+}
+function saveQEditor(i){
+  const q=WC.questions[i];
+  const opts=document.getElementById('eqOpts').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const text=document.getElementById('eqQ').value.trim();
+  if(!text||opts.length<2){toast('A question and at least 2 options are needed');return;}
+  let a=parseInt(document.getElementById('eqA').value)-1;
+  if(isNaN(a)||a<0||a>=opts.length)a=0;
+  q.q=text; q.opts=opts; q.a=a; q.stem=val('eqStem'); q.fb=document.getElementById('eqFb').value.trim();
+  renderCourseModal();
+}
+
+/* ---------- PREVIEW: save, then open the course as a learner sees it ---------- */
+async function saveAndPreview(){
+  grabCourseFields();
+  const title=WC.title;
+  const ok=await saveCourse();
+  if(ok===false)return;
+  const c=DB.courses.find(x=>x.title===title);
+  if(c) openCourse(c.id); else toast('Saved. Open it from My Learning to preview.');
 }
 function addMod(){
   const type=document.getElementById('ecNewType').value, title=val('ecNewTitle');
   if(!title){toast('Give the module a title');return;}
   grabCourseFields();
-  const md={dbId:null,type,title,dur:10,src:null,content:type==='text'?'<p>Lesson content coming soon.</p>':null,scenario:null};
+  const md={dbId:null,type,title,dur:10,src:null,content:type==='text'?'<p>Write the lesson here.</p>':null,scenario:null,qc:[]};
   WC.modules.push(md); renderCourseModal();
 }
 function rmMod(i){ grabCourseFields(); const md=WC.modules.splice(i,1)[0]; if(md.dbId)WC.delMods.push(md.dbId); renderCourseModal(); }
@@ -1120,7 +1211,7 @@ async function saveCourse(){
   try{
     let cid=WC.dbId;
     if(cid){
-      const {error}=await sb.from('lms_courses').update({title:WC.title,category:WC.cat,pass_mark:WC.passMark,mandatory:WC.mandatory,version:WC.version+1}).eq('id',cid);
+      const {error}=await sb.from('lms_courses').update({title:WC.title,category:WC.cat,pass_mark:WC.passMark,mandatory:WC.mandatory,version:WC.bump?WC.version+1:WC.version}).eq('id',cid);
       if(error)throw error;
     }else{
       const {data,error}=await sb.from('lms_courses').insert({title:WC.title,category:WC.cat,pass_mark:WC.passMark,mandatory:WC.mandatory,status:'draft'}).select('id').single();
@@ -1129,15 +1220,17 @@ async function saveCourse(){
     if(WC.delMods.length){const {error}=await sb.from('lms_modules').delete().in('id',WC.delMods); if(error)throw error;}
     if(WC.delQs.length){const {error}=await sb.from('lms_questions').delete().in('id',WC.delQs); if(error)throw error;}
     for(let i=0;i<WC.modules.length;i++){ const md=WC.modules[i];
-      if(md.dbId){ const {error}=await sb.from('lms_modules').update({title:md.title,position:i}).eq('id',md.dbId); if(error)throw error; }
-      else{ const {error}=await sb.from('lms_modules').insert({course_id:cid,type:md.type,title:md.title,position:i,duration_min:md.dur||10,content:md.content,scenario:md.scenario}); if(error)throw error; }
+      const mp={title:md.title,position:i,duration_min:md.dur||10,content:md.content,quick_checks:md.qc||[]};
+      if(md.dbId){ const {error}=await sb.from('lms_modules').update(mp).eq('id',md.dbId); if(error)throw error; }
+      else{ const {error}=await sb.from('lms_modules').insert({course_id:cid,type:md.type,scenario:md.scenario,...mp}); if(error)throw error; }
     }
     for(let i=0;i<WC.questions.length;i++){ const q=WC.questions[i];
-      if(q.dbId){ const {error}=await sb.from('lms_questions').update({position:i}).eq('id',q.dbId); if(error)throw error; }
-      else{ const {error}=await sb.from('lms_questions').insert({course_id:cid,q:q.q,options:q.opts,correct:q.a,position:i,stem:q.stem||'',fb:q.fb||''}); if(error)throw error; }
+      const qp={q:q.q,options:q.opts,correct:q.a,position:i,stem:q.stem||'',fb:q.fb||''};
+      if(q.dbId){ const {error}=await sb.from('lms_questions').update(qp).eq('id',q.dbId); if(error)throw error; }
+      else{ const {error}=await sb.from('lms_questions').insert({course_id:cid,...qp}); if(error)throw error; }
     }
-    WC=null; closeModal(); await loadData(); render(); toast('Course saved ✓');
-  }catch(err){ toast('Save failed: '+err.message); btn.disabled=false; }
+    WC=null; closeModal(); await loadData(); render(); toast('Course saved ✓'); return true;
+  }catch(err){ toast('Save failed: '+err.message); btn.disabled=false; return false; }
 }
 
 /* =================== ADMIN: FEEDBACK INBOX =================== */
