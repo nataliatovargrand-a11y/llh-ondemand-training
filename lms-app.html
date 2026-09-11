@@ -1013,7 +1013,10 @@ let WC=null; // working copy for the course editor
 function renderCourses(m){
   m.innerHTML=`
   <div class="pagehead"><div><h2>Course Builder</h2><div class="sub">Create and revise courses — lessons, video, audio, scenarios and tests. Changes go live instantly.</div></div>
-    <button class="btn btn-primary btn-sm" onclick="editCourse(null)">＋ New course</button></div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <button class="btn btn-soft btn-sm" onclick="importCourse()">⇩ Import a course</button>
+      <button class="btn btn-primary btn-sm" onclick="editCourse(null)">＋ New course</button>
+    </div></div>
   <div class="grid cols3">
     ${DB.courses.map(c=>`<div class="card ccard">
       <div class="meta">
@@ -1092,6 +1095,110 @@ function grabCourseFields(){
   WC.passMark=parseInt(document.getElementById('ecPass').value)||80;
   WC.mandatory=document.getElementById('ecMand').value==='1';
   const b=document.getElementById('ecBump'); if(b) WC.bump=b.checked;
+}
+
+/* ---------- IMPORT: paste a whole course in one go ---------- */
+const IMPORT_SHAPE = `{
+  "title": "Course title",
+  "category": "Clinical",
+  "passMark": 80,
+  "mandatory": true,
+  "modules": [
+    {
+      "title": "Module title",
+      "minutes": 8,
+      "content": "<p class=\"objective\">Opening line.</p><p>Body text.</p>",
+      "quickChecks": [
+        {
+          "question": "Question text",
+          "options": ["The correct answer", "A wrong one", "Another wrong one"],
+          "correct": 0,
+          "right": "Shown when they get it right.",
+          "wrong": "Shown when they get it wrong."
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "question": "Question text",
+      "stem": "Optional scenario shown above the question.",
+      "options": ["The correct answer", "A wrong one", "Another wrong one"],
+      "correct": 0,
+      "feedback": "Optional explanation shown after answering."
+    }
+  ]
+}`;
+function importCourse(){
+  showModal(`<h3>Import a course</h3>
+    <div style="font-size:.84rem;color:var(--ink-soft);line-height:1.6">
+      Paste the course below. Nothing is saved yet. It opens in the course editor so you can read it through,
+      and it saves as a draft, so staff see nothing until you publish it.
+    </div>
+    <label>Course</label>
+    <textarea id="impJson" rows="13" placeholder="Paste here"
+      style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.76rem;line-height:1.5"></textarea>
+    <details style="margin-top:.7rem">
+      <summary style="cursor:pointer;font-size:.84rem;color:var(--ink-soft)">What it should look like</summary>
+      <pre style="background:var(--paper);padding:.75rem;border-radius:8px;overflow:auto;font-size:.7rem;line-height:1.45;margin-top:.5rem">${esc(IMPORT_SHAPE)}</pre>
+    </details>
+    <div id="impErr" class="hidden" style="color:var(--bad);font-size:.86rem;margin-top:.7rem;line-height:1.5"></div>
+    <div style="display:flex;gap:.6rem;margin-top:1.3rem;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="runImport()">Check it and open the editor</button>
+      <button class="btn btn-soft" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+function runImport(){
+  const err=document.getElementById('impErr');
+  const fail=(m)=>{ err.textContent=m; err.classList.remove('hidden'); };
+  const raw=document.getElementById('impJson').value.trim();
+  if(!raw) return fail('Paste the course in first.');
+  let d;
+  try{ d=JSON.parse(raw); }
+  catch(e){ return fail('That did not read as valid JSON. '+e.message); }
+  if(!d||typeof d!=='object'||Array.isArray(d)) return fail('Expected one course.');
+  if(!d.title) return fail('The course needs a title.');
+  const mods=Array.isArray(d.modules)?d.modules:[];
+  const qs=Array.isArray(d.questions)?d.questions:[];
+  if(!mods.length) return fail('The course needs at least one module.');
+  const clean=(o)=>Array.isArray(o)?o.map(x=>String(x).trim()).filter(Boolean):[];
+  const modules=[]; let qcCount=0;
+  for(let i=0;i<mods.length;i++){
+    const m=mods[i]||{};
+    if(!m.title) return fail('Module '+(i+1)+' has no title.');
+    const list=Array.isArray(m.quickChecks)?m.quickChecks:[];
+    const qc=[];
+    for(let j=0;j<list.length;j++){
+      const c=list[j]||{}, opts=clean(c.options);
+      if(!c.question||opts.length<2)
+        return fail('Quick check '+(j+1)+' in module '+(i+1)+' needs a question and at least 2 options.');
+      let a=Number.isInteger(c.correct)?c.correct:0;
+      if(a<0||a>=opts.length) a=0;
+      qc.push({q:String(c.question),opts,a,
+        good:String(c.right||'Correct.'),
+        bad:String(c.wrong||'Not quite, read that section again.')});
+    }
+    qcCount+=qc.length;
+    modules.push({dbId:null,
+      type:(m.type==='video'||m.type==='audio')?m.type:'text',
+      title:String(m.title), dur:parseInt(m.minutes)||10, src:null,
+      content:m.content!=null?String(m.content):'', scenario:null, qc});
+  }
+  const questions=[];
+  for(let i=0;i<qs.length;i++){
+    const q=qs[i]||{}, opts=clean(q.options);
+    if(!q.question||opts.length<2)
+      return fail('Test question '+(i+1)+' needs a question and at least 2 options.');
+    let a=Number.isInteger(q.correct)?q.correct:0;
+    if(a<0||a>=opts.length) a=0;
+    questions.push({dbId:null,q:String(q.question),opts,a,
+      stem:String(q.stem||''), fb:String(q.feedback||'')});
+  }
+  WC={dbId:null,title:String(d.title),cat:String(d.category||'General'),
+      passMark:parseInt(d.passMark)||80, mandatory:d.mandatory===true,
+      version:1, bump:false, modules, questions, delMods:[], delQs:[]};
+  toast('Read '+modules.length+' modules, '+qcCount+' quick checks and '+questions.length+' test questions. Check it, then Save course.');
+  renderCourseModal();
 }
 
 /* ---------- MODULE EDITOR: lesson content and quick checks ---------- */
