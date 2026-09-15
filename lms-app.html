@@ -125,6 +125,19 @@ tr:last-child td{border-bottom:none}
 pre.email{white-space:pre-wrap;background:var(--paper);border-radius:10px;padding:1rem;font-size:.82rem;font-family:ui-monospace,monospace;line-height:1.6;max-height:320px;overflow-y:auto}
 #toast{position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ever-deep);color:var(--cream);padding:.8rem 1.4rem;border-radius:12px;font-weight:600;font-size:.9rem;transition:transform .3s;z-index:99;box-shadow:0 10px 30px rgba(0,0,0,.3)}
 #toast.show{transform:translateX(-50%) translateY(0)}
+.npop-wrap{position:fixed;inset:0;background:rgba(8,31,21,.55);display:flex;align-items:center;justify-content:center;z-index:120;padding:1.2rem;animation:fadein .2s ease}
+.npop{background:var(--card);border-radius:18px;max-width:470px;width:100%;max-height:88vh;overflow-y:auto;padding:1.6rem 1.7rem;box-shadow:0 24px 60px rgba(8,31,21,.38);border-top:6px solid var(--ever);animation:rise .35s ease both}
+.npop .bell{font-size:1.8rem;line-height:1;display:block;margin-bottom:.45rem;animation:ring 1.1s ease 2}
+.npop .kick{font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--burgundy)}
+.npop h3{font-family:var(--disp);font-size:1.3rem;margin:.3rem 0 .35rem}
+.npop .blurb{color:var(--ink-soft);font-size:.88rem;line-height:1.55;margin-bottom:1rem}
+.npop ul{list-style:none;margin:0 0 1.1rem;padding:0}
+.npop li{border:1px solid var(--line);border-radius:12px;padding:.7rem .85rem;margin-bottom:.5rem;background:var(--paper)}
+.npop li b{display:block;font-size:.95rem;margin-bottom:.35rem}
+.npop li .chip{margin:0 .3rem .25rem 0}
+.npop .acts{display:flex;gap:.6rem;flex-wrap:wrap}
+.chip-new{background:var(--clay);color:#fff}
+@keyframes ring{0%,100%{transform:rotate(0)}20%{transform:rotate(14deg)}40%{transform:rotate(-12deg)}60%{transform:rotate(8deg)}80%{transform:rotate(-5deg)}}
 .stars{display:flex;gap:.3rem;font-size:1.6rem}
 .stars button{background:none;border:none;color:#D8CFBB;transition:color .1s,transform .1s}
 .stars button.on{color:var(--burgundy)} .stars button:hover{transform:scale(1.15)}
@@ -269,6 +282,7 @@ pre.email{white-space:pre-wrap;background:var(--paper);border-radius:10px;paddin
 </div>
 
 <div id="modalRoot"></div>
+<div id="popRoot"></div>
 <div id="toast"></div>
 
 <script>
@@ -278,7 +292,7 @@ const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 const sb=window.supabase.createClient(SB_URL,SB_KEY);
 
 let DB={users:[],courses:[],progress:[],feedback:[],certs:[],field:[]};
-let ME=null, VIEW='home', PLAY=null, RT=null, _rtT=null, SEL_UID=null;
+let ME=null, VIEW='home', PLAY=null, RT=null, _rtT=null, SEL_UID=null, NEW_IDS=[];
 
 function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
 function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -367,6 +381,55 @@ function isAccredited(uid){ return mandatoryCourses().every(c=>passedThisQuarter
 function accreditationPct(uid){ const m=mandatoryCourses(); if(!m.length)return 100;
   return Math.round(m.filter(c=>passedThisQuarter(uid,c)).length/m.length*100); }
 
+/* =================== NEW COURSE ALERT =================== */
+/* Each person is told once, in their own browser, when a course goes live.
+   The ids they have already been shown are kept in local storage, so the very
+   first load seeds the list silently and nobody is greeted by the whole
+   existing library. Realtime already refreshes on lms_courses changes, so a
+   learner with the Hub open sees the pop up the moment Publish is clicked. */
+function seenKey(){ return 'llh_seen_courses_'+(ME?ME.uid:'anon'); }
+function seenCourses(){ try{ const raw=localStorage.getItem(seenKey()); return raw?JSON.parse(raw):null; }catch(e){ return null; } }
+function publishedIds(){ return DB.courses.filter(c=>c.status==='published').map(c=>c.id); }
+function markSeen(){ try{ localStorage.setItem(seenKey(),JSON.stringify(publishedIds())); }catch(e){} }
+/* Published courses this person has not been told about yet */
+function findNewCourses(){
+  const seen=seenCourses();
+  if(!seen){ markSeen(); return []; }   /* first ever load on this device */
+  return DB.courses.filter(c=>c.status==='published'&&seen.indexOf(c.id)<0);
+}
+function checkNewCourses(){
+  if(!ME||PLAY) return;                                    /* never interrupt a lesson */
+  const mr=document.getElementById('modalRoot');
+  if(mr&&mr.innerHTML) return;                             /* never cover an open dialog */
+  const fresh=findNewCourses();
+  if(!fresh.length) return;
+  fresh.forEach(c=>{ if(NEW_IDS.indexOf(c.id)<0) NEW_IDS.push(c.id); });
+  const one=fresh.length===1;
+  const items=fresh.map(c=>`<li><b>${esc(c.title)}</b><span class="chip chip-mut">${esc(c.cat)}</span>${c.mandatory?' <span class="chip chip-gold">Mandatory</span>':''} <span class="chip chip-mut">${c.modules.length} lesson${c.modules.length===1?'':'s'}</span>${c.quiz.questions.length?' <span class="chip chip-mut">Final test</span>':''}</li>`).join('');
+  document.getElementById('popRoot').innerHTML=`
+  <div class="npop-wrap" role="dialog" aria-modal="true" aria-labelledby="npopTitle" onclick="if(event.target===this)dismissNew()">
+    <div class="npop">
+      <span class="bell" aria-hidden="true">&#128276;</span>
+      <span class="kick">Just published</span>
+      <h3 id="npopTitle">${one?'A new course is available':fresh.length+' new courses are available'}</h3>
+      <p class="blurb">${one?'It is live on the Learning Hub now.':'They are live on the Learning Hub now.'}${fresh.some(c=>c.mandatory)?' Anything marked mandatory counts towards your accreditation this quarter.':''}</p>
+      <ul>${items}</ul>
+      <div class="acts">
+        <button class="btn btn-primary btn-sm" onclick="${one?"startNew('"+fresh[0].id+"')":'newGoHome()'}">${one?'Start course':'Go to My Learning'}</button>
+        <button class="btn btn-soft btn-sm" onclick="dismissNew()">Later</button>
+      </div>
+    </div>
+  </div>`;
+  document.addEventListener('keydown',popEsc);
+}
+function popEsc(e){ if(e.key==='Escape') dismissNew(); }
+function closePop(){ const r=document.getElementById('popRoot'); if(r) r.innerHTML=''; document.removeEventListener('keydown',popEsc); }
+/* Dismissing only stops the pop up. The New badge stays on the card for this
+   session so the course is still easy to find. */
+function dismissNew(){ markSeen(); closePop(); render(); }
+function newGoHome(){ markSeen(); closePop(); go('home'); }
+function startNew(cid){ markSeen(); closePop(); VIEW='home'; renderShell(); openCourse(cid); }
+
 /* =================== AUTH =================== */
 async function doLogin(e){ e.preventDefault();
   const btn=document.getElementById('loginBtn'); btn.disabled=true;
@@ -396,7 +459,7 @@ async function enterApp(){
   document.getElementById('loading').classList.add('hidden');
   document.getElementById('loginView').classList.add('hidden');
   document.getElementById('appView').classList.remove('hidden');
-  VIEW='home'; PLAY=null; setupRealtime(); renderShell();
+  VIEW='home'; PLAY=null; setupRealtime(); renderShell(); checkNewCourses();
 }
 
 function showLogin(){
@@ -419,9 +482,22 @@ function setupRealtime(){
     .subscribe();
 }
 function rtRefresh(){ clearTimeout(_rtT); _rtT=setTimeout(async()=>{
-  try{ await loadData(); if(!PLAY) render(); }catch(e){} },900); }
+  try{ await loadData(); if(!PLAY){ render(); checkNewCourses(); } }catch(e){} },900); }
 
 /* =================== FIRST-TIME SETUP =================== */
+/* Admin confirmation the moment a course goes live */
+function showPublishedConfirm(c){
+  const live=DB.courses.filter(x=>x.status==='published').length;
+  const staff=(DB.users||[]).length;
+  showModal(`<h3>&#128276; ${esc(c.title)} is live</h3>
+    <p style="color:var(--ink-soft);font-size:.9rem;line-height:1.6">It is published on the Learning Hub now. Anyone signed in sees a new course pop up straight away, and everyone else sees it the next time they sign in.</p>
+    <p style="font-size:.9rem;line-height:1.6"><b>${staff}</b> staff accounts can open it. <b>${live}</b> courses are published in total.</p>
+    <div style="display:flex;gap:.6rem;margin-top:1.1rem;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" onclick="closeModal()">Done</button>
+      <button class="btn btn-soft btn-sm" onclick="closeModal();go('home')">See it as a learner</button>
+    </div>`);
+}
+
 function openBootstrap(){
   showModal(`<h3>First-time setup</h3>
     <p style="color:var(--ink-soft);font-size:.88rem">Creates the founding administrator account. Only works once — after that, admins add everyone else from the Users screen.</p>
@@ -618,6 +694,7 @@ function renderHome(m){
         <div class="meta">
           <span class="chip chip-mut">${esc(c.cat)}</span>
           ${c.mandatory?'<span class="chip chip-gold">Mandatory</span>':''}
+          ${NEW_IDS.indexOf(c.id)>=0?'<span class="chip chip-new">New</span>':''}
           ${passed?'<span class="chip chip-ok">✓ Passed'+(score!==null?' · '+score+'%':'')+'</span>':(pctc>0?'<span class="chip chip-warn">In progress</span>':'')}
         </div>
         <h3>${esc(c.title)}</h3>
@@ -1036,7 +1113,8 @@ async function togglePublish(cid){ const c=DB.courses.find(x=>x.id===cid);
   const ns=c.status==='published'?'draft':'published';
   const {error}=await sb.from('lms_courses').update({status:ns}).eq('id',cid);
   if(error){toast(error.message);return;}
-  c.status=ns; render(); toast(ns==='published'?'Course published — live for all staff ✓':'Course set to draft');
+  c.status=ns; markSeen(); render();
+  if(ns==='published') showPublishedConfirm(c); else toast('Course set to draft');
 }
 function editCourse(cid){
   if(cid){ const c=DB.courses.find(x=>x.id===cid);
